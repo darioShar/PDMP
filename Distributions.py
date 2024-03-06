@@ -1,5 +1,3 @@
-# file to generate some default data like swiss roll, GMM, levy variables
-
 from sklearn.datasets import make_swiss_roll
 from sklearn.mixture import GaussianMixture
 import numpy as np
@@ -8,6 +6,14 @@ import torch
 import scipy
 from torch.utils.data import Dataset
 from torchvision.transforms import ToTensor
+
+
+
+'''
+This file contains the distributions that are used in the experiments.
+'''
+
+
 
 # repeat a tensor so that its last dimensions [1:] match size[1:]
 # ideal for working with batches.
@@ -18,12 +24,12 @@ def match_last_dims(data, size):
     return data.repeat(1, *(size[1:]))
 
 ''' Generate fat tail distributions'''
-# assumes it is a batch size
-# is isotropic, just generates a single 'a' tensored to the right shape
+
+# generates a levy stable distribution skewed to the right
 def gen_skewed_levy(alpha, 
-                    size, 
+                    size, # assumes that the first dimension of size is the batch size
                     device = None, 
-                    isotropic = True,
+                    isotropic = True, # if True generates a single a for all the batch
                     clamp_a = 2000):
     if (alpha > 2.0 or alpha <= 0.):
         raise Exception('Wrong value of alpha ({}) for skewed levy r.v generation'.format(alpha))
@@ -42,7 +48,6 @@ def gen_skewed_levy(alpha,
 
 #symmetric alpha stable noise of scale 1
 # can generate from totally skewed noise if provided
-# assumes it is a batch size
 def gen_sas(alpha, 
             size, 
             a = None, 
@@ -58,30 +63,10 @@ def gen_sas(alpha,
     #ret = repeat_shape(ret, size)
     return torch.clamp(torch.sqrt(a)* ret, -clamp_eps, clamp_eps)
 
-    '''
-        if isotropic:
-            ret = torch.tensor(scipy.stats.levy_stable.rvs(alpha, 0, loc=0, scale=1, size=size[0]), dtype=torch.float32)
-            ret = repeat_shape(ret, size)
-        else:
-            ret = torch.tensor(scipy.stats.levy_stable.rvs(alpha, 0, loc=0, scale=1, size=size), dtype=torch.float32)
-        return ret if device is None else ret.to(device)
-    else:
-        if isotropic:
-            ret = torch.randn(size=(size[0],))
-            ret = repeat_shape(ret, size)
-        else:
-            ret = torch.randn(size=size)
-        if device is not None:
-            ret = ret.to(device)
-        return torch.sqrt(a)* ret'''
 
+''' All functions here must have the same signature'''
 
-
-
-
-''' They must have the same signature'''
-
-def sample_2_gmm(n_samples, alpha = None, n = None, std = None, theta = 1.0, weights = None, device = None, normalize=False):
+def sample_2_gmm(nsamples, alpha = None, n_mixture = None, std = None, theta = 1.0, weights = None, device = None, normalize=False, nfeatures=1):
     if weights is None:
         weights = np.array([0.5, 0.5])
     means = np.array([ [theta, 0], [-theta, 0] ])
@@ -89,26 +74,26 @@ def sample_2_gmm(n_samples, alpha = None, n = None, std = None, theta = 1.0, wei
     gmm.weights_ = weights
     gmm.means_ = means
     gmm.covariances_ = [std*std*np.eye(2) for i in range(2)]
-    x, _ = gmm.sample(n_samples)
+    x, _ = gmm.sample(nsamples)
     if normalize:
         x = (x - x.mean()) / x.std()
     # don't forget to shuffle rows, otherwise sorted by mixture
     x = torch.tensor(x, dtype = torch.float32)
     return x[torch.randperm(x.size()[0])]
 
-def sample_grid_gmm(n_samples, alpha = None, n = None, std = None, theta = None, weights = None, device = None, normalize=False):
+def sample_grid_gmm(nsamples, alpha = None, n_mixture = None, std = None, theta = None, weights = None, device = None, normalize=False, nfeatures=1):
     if weights is None:
-        weights = np.array([1 / (n*n) for i in range(n*n)])
+        weights = np.array([1 / (n_mixture*n_mixture) for i in range(n_mixture*n_mixture)])
     means = []
-    for i in range(n):
-        for j in range(n):
+    for i in range(n_mixture):
+        for j in range(n_mixture):
             means.append([i, j])
     means = np.array(means)
-    gmm = GaussianMixture(n_components=n*n)
+    gmm = GaussianMixture(n_components=n_mixture*n_mixture)
     gmm.weights_ = weights
     gmm.means_ = means
-    gmm.covariances_ = [std*std*np.eye(2) for i in range(n*n)]
-    x, _ = gmm.sample(n_samples)
+    gmm.covariances_ = [std*std*np.eye(2) for i in range(n_mixture*n_mixture)]
+    x, _ = gmm.sample(nsamples)
     if normalize:
         x = (x - x.mean()) / x.std()
     # don't forget to shuffle rows, otherwise sorted by mixture
@@ -116,25 +101,25 @@ def sample_grid_gmm(n_samples, alpha = None, n = None, std = None, theta = None,
     return x[torch.randperm(x.size()[0])]
 
 
-def gen_swiss_roll(n_samples, alpha = None, n = None, std = None, theta = None, weights = None, device = None, normalize=False):
-    x, _ = make_swiss_roll(n_samples=n_samples, noise=std)
+def gen_swiss_roll(nsamples, alpha = None, n_mixture = None, std = None, theta = None, weights = None, device = None, normalize=False, nfeatures=1):
+    x, _ = make_swiss_roll(nsamples=nsamples, noise=std)
     # Make two-dimensional to easen visualization
     x = x[:, [0, 2]]
     x = (x - x.mean()) / x.std()
     return torch.tensor(x, dtype = torch.float32)
 
 
-def sample_grid_sas(n_samples, alpha = 1.8, n = None, std = None, theta = 1.0, weights = None, device = None, normalize=False):
+def sample_grid_sas(nsamples, alpha = 1.8, n_mixture = None, std = None, theta = 1.0, weights = None, device = None, normalize=False, nfeatures=1):
     if weights is None:
-        weights = np.array([1 / (n*n) for i in range(n*n)])
-    data = std * gen_sas(alpha, size = (n_samples, 2))
+        weights = np.array([1 / (n_mixture*n_mixture) for i in range(n_mixture*n_mixture)])
+    data = std * gen_sas(alpha, size = (nsamples, 2))
     weights = np.concatenate((np.array([0.0]), weights))
-    idx = np.cumsum(weights)*n_samples
-    for i in range(n):
-        for j in range(n):
+    idx = np.cumsum(weights)*nsamples
+    for i in range(n_mixture):
+        for j in range(n_mixture):
             # for the moment just selecting exact proportions
-            s = int(idx[i*n + j])
-            e = int(idx[i*n + j + 1])
+            s = int(idx[i*n_mixture + j])
+            e = int(idx[i*n_mixture + j + 1])
             data[s:e] = data[s:e] + torch.tensor([i, j])
 
     if normalize:

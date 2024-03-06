@@ -7,6 +7,11 @@ import os
 
 SAVE_ANIMATION_PATH = './animation'
 
+
+''' 
+This class is used to generate samples from a PDMP process.
+It takes a model and a PDMP objects as input, and a dataloader to sample initial data from.
+'''
 class GenerationManager:
     
     # same device as diffusion
@@ -21,6 +26,8 @@ class GenerationManager:
         self.history = []
         self.pdmp = pdmp
 
+    # generate nsamples from the reverse PDMP process and our model
+    # we need to implement pdmp.reverse_sampling first
     def generate(self, 
                  nsamples,
                  use_samples = None,
@@ -40,7 +47,9 @@ class GenerationManager:
         else:
             samples = x
         self.samples = samples.cpu()
+    
 
+    # if the data is image, return the last sample as a pyplot figure
     def get_image(self):
         img = self.samples[-1].squeeze(0)
         fig = plt.figure()
@@ -48,6 +57,8 @@ class GenerationManager:
         plt.close(fig)
         return fig
     
+    # if the data is 2d, return a scatter plot of the samples.
+    # Optionally, plot the original data as well
     def get_plot(self, 
                  plot_original_data = True, 
                  limit_nb_orig_data = 5000,
@@ -83,6 +94,7 @@ class GenerationManager:
                         marker=marker, alpha=0.5, animated = animated)
         return fig
     
+    # load original data from the dataloader
     def load_original_data(self, nsamples):
         data_size = 0
         total_data = torch.tensor([])
@@ -92,6 +104,8 @@ class GenerationManager:
             data_size += data.size()[0]
         return total_data.squeeze(1)[:nsamples]
     
+    # Create an animation of the generation of original data, saved in self.history,
+    # and save it to a file.
     def animation(self,
                   generated_data_name = "undefined_distribution",
                 plot_original_data = True, 

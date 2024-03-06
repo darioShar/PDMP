@@ -7,6 +7,10 @@ import torch.nn as nn
 import torch.optim as optim
 import shutil
 
+''' 
+Available methods for positional embedding. This will be used to condtion our model.
+'''
+
 class SinusoidalPositionalEmbedding(nn.Module):
     def __init__(self, max_time_steps, embedding_size, device, n = 10000) -> None:
         super().__init__()

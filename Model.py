@@ -10,28 +10,16 @@ import shutil
 import DiffusionBlocks as Block
 import Embeddings as Embedding
 
-class ExpBlock(nn.Module):
-    def __init__(self, 
-                 nunits, 
-                 dropout_rate, 
-                 activation = nn.SiLU):
-        super(ExpBlock, self).__init__()
-        
-        self.act = activation(inplace=False)
-        self.dropout = nn.Dropout(p=dropout_rate)
-        
-        self.mlp_exp = nn.Sequential(self.dropout, 
-                                   nn.Linear(nunits, nunits))
-        self.mlp_base = nn.Sequential(self.dropout, 
-                                   nn.Linear(nunits, nunits))
-        
-    def forward(self, x: torch.Tensor):
-        x_exp = nn.functional.relu(self.mlp_exp(x))
-        x_base = self.mlp_base(x)
-        return x_base * torch.exp(x_exp)
-    
 
-#Can predict gaussian_noise, stable_noise, anterior_mean
+''' 
+This Deep Learning model is used to learn the diffusion process for heavy tailed noise.
+It contains many blocks of the same architecture, and it is conditioned on the time variable.
+The model is a simple MLP with skip connections and group normalization.
+
+There are many parameters to tweak specifically for certain experiments relevant to another study, 
+please disregard them for the moment.
+'''
+
 class LevyDiffusionModel(nn.Module):
     possible_time_embeddings = [
         'sinusoidal',
@@ -127,8 +115,6 @@ class LevyDiffusionModel(nn.Module):
                                             activation = nn.SiLU)
                                         for _ in range(self.nblocks)])
         
-        self.midblocks_exp = nn.ModuleList([ExpBlock(self.nunits, self.dropout_rate) 
-                                            for _ in range(self.nblocks)])
         
         #self.endblock_exp = ExpBlock(self.nfeatures, self.dropout_rate)
         # add one conditioned block and one MLP for both mean and variance computation

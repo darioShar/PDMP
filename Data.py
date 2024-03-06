@@ -1,5 +1,3 @@
-# file to generate some default data like swiss roll, GMM, levy variables
-
 from sklearn.datasets import make_swiss_roll
 from sklearn.mixture import GaussianMixture
 import numpy as np
@@ -9,12 +7,12 @@ from torchvision.transforms import ToTensor
 
 from Distributions import *
 
-# Wrapper class to call all the generation functions
-# We can specify arbitrary *args and **kwargs. They must match with the selected generation
-# function of course.
-
-# TODO: For the moment, better to just give kwargs, as one could not necesarrily remember 
-# the *args order...
+''' 
+Wrapper class to call all the generation functions
+We can specify arbitrary *args and **kwargs. They must match the selected
+function signature, but we have made it so all the distributions can be genrated
+by functions with the same signature, see Distributions file.
+'''
 class Generator(Dataset):
     available_distributions = \
         {'gmm_2': sample_2_gmm,
@@ -26,7 +24,11 @@ class Generator(Dataset):
         #'stable_noising': stable_noising,
         'sas_grid': sample_grid_sas
         }
-    def __init__(self, operation, transform = None, *args, **kwargs):
+    def __init__(self, 
+                 dataset = None, # distribution to select 
+                 transform = None,  # transform to apply to each generated sample
+                 *args, **kwargs):
+        assert dataset is not None
         self.transform = lambda x: x
         if transform is not None:
             self.transform = transform
@@ -34,7 +36,7 @@ class Generator(Dataset):
         self.args = args
         self.samples = None
         try:
-            self.generator = self.available_distributions[operation]
+            self.generator = self.available_distributions[dataset]
         except:
             raise Exception('Unknown distribution to sample from. \
             Available distributions: {}'.format(list(self.available_distributions.keys())))
@@ -44,7 +46,7 @@ class Generator(Dataset):
         self.transform = transform
     
     # replaces missing elements of args and kwargs by those of self.args and self.kwargs
-    # replaces elements of kwargs totally if non void
+    # replaces all elements of kwargs if non void
     def setParams(self, *args, **kwargs):
         if args == () and kwargs == {}:
             raise Exception('Given void parameters')
@@ -58,8 +60,8 @@ class Generator(Dataset):
     def getName(self):
         return 
     
-    # generate by replacing self.args by args if it is not ()
-    # and replace potentially missing kwargs by thos provided.
+    # generate samples using self.args instead of args if it is not ()
+    # updates self.kwargs by kwargs.
     def generate(self, *args, **kwargs):
         tmp_kwargs = self.kwargs | kwargs        
         if args == () and kwargs == {} and self.kwargs == {}:
