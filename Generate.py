@@ -32,7 +32,7 @@ class GenerationManager:
                  nsamples,
                  use_samples = None,
                  get_sample_history = False):
-        _, (data, y) = next(enumerate(self.original_data))
+        _, (data, ) = next(enumerate(self.original_data))
         size = list(data.size())
         size[0] = nsamples 
         x = self.pdmp.reverse_sampling(
@@ -99,7 +99,7 @@ class GenerationManager:
         data_size = 0
         total_data = torch.tensor([])
         while data_size < nsamples:
-            _, (data,y) = next(enumerate(self.original_data))
+            _, (data,) = next(enumerate(self.original_data))
             total_data = torch.concat([total_data, data])
             data_size += data.size()[0]
         return total_data.squeeze(1)[:nsamples]
