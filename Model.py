@@ -94,7 +94,7 @@ class LevyDiffusionModel(nn.Module):
                                           self.act)
         
         # possible exp block, at the end
-        
+        print(self.additional_dim)
         self.linear_in =  nn.Linear(2*self.nfeatures + self.additional_dim, self.nunits)
         
         self.inblock = nn.Sequential(self.linear_in,
@@ -169,7 +169,7 @@ class LevyDiffusionModel(nn.Module):
         a_t_prime = torch.log(a_t_prime)
         a_t_1 = torch.log(a_t_1)'''
         
-        # inp = [x]
+        inp = [x]
         
         a_t_prime = torch.ones(size = x.shape).to(self.device)
         a_t_1 = torch.ones(size = x.shape).to(self.device)
@@ -200,7 +200,7 @@ class LevyDiffusionModel(nn.Module):
             t = self.time_mlp(timestep.to(torch.float32))
         
         # input
-        val = x #torch.hstack(inp)
+        val = torch.concatenate(inp, dim = -1) # x
         # compute
         val = self.inblock(val)
         for midblock in self.midblocks:
@@ -216,7 +216,11 @@ class LevyDiffusionModel(nn.Module):
                 val_2 = val_2.expand(*val_2.shape[:-1], val_1.shape[-1])
             return torch.concat([val_1, val_2], dim = 1) # concat on channels dim
         else:
-            return nn.functional.relu(val_1)
+            # val_1 is the n-dimensional output wiht n the number of features
+            val_1 = torch.log(1 + torch.exp(val_1))
+            #val_1 = nn.functional.sigmoid(val_1)
+            val_2 = 1 / val_1
+            return torch.concatenate((val_1, val_2), dim = -1) #val_1 #(1 / val_1) - 1 # torch.concatenate((val_1, val_2)) #nn.functional.relu(val_1)
             
         # duplicate last
         #val = val.expand(val.shape[0], 2*val.shape[1], *val.shape[2:])
