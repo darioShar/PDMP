@@ -18,7 +18,8 @@ class GenerationManager:
     def __init__(self, 
                  model, 
                  pdmp, 
-                 dataloader
+                 dataloader,
+                 is_image = False
                  ):
         self.model = model
         self.original_data = dataloader
@@ -30,23 +31,29 @@ class GenerationManager:
     # we need to implement pdmp.reverse_sampling first
     def generate(self, 
                  nsamples,
+                 num_timesteps = None, # keep default
+                 clip_denoised = False,
+                 print_progession = False,
                  use_samples = None,
                  get_sample_history = False):
-        _, (data, ) = next(enumerate(self.original_data))
+        _, (data, _) = next(enumerate(self.original_data))
         size = list(data.size())
-        size[0] = nsamples 
-        x = self.pdmp.reverse_sampling(
-                        nsamples,
+        size[0] = nsamples
+        if num_timesteps is not None:
+            default_reverse_steps = self.pdmp.reverse_steps
+            self.pdmp.reverse_steps = num_timesteps
+        chain = self.pdmp.reverse_sampling(
+                        nsamples=nsamples,
+                        model=self.model,
                         initial_data = use_samples, # sample from Gaussian, else use this initial_data
-                        get_history = get_sample_history # else store history of data points in a list
+                        print_progession = print_progession,
                         )
-        # store samples and possibly history on cpu
-        if get_sample_history:
-            samples, hist = x
-            self.history = [h.cpu() for h in hist]
-        else:
-            samples = x
-        self.samples = samples.cpu()
+        if num_timesteps is not None:
+            self.pdmp.reverse_steps = default_reverse_steps
+        # chain is [time, particle, channel, (position, speed)]
+        self.samples = chain[-1, :, :, :2].cpu() # get positions
+        # store history on cpu
+        self.history = torch.stack([h.cpu() for h in chain])
     
 
     # if the data is image, return the last sample as a pyplot figure
@@ -67,6 +74,7 @@ class GenerationManager:
         original_data = self.load_original_data(limit_nb_orig_data)
         gen_data = self.samples
         # squeeze
+        original_data = original_data.squeeze(1)
         gen_data = gen_data.squeeze(1)
         fig = plt.figure()
         if plot_original_data:
@@ -99,10 +107,10 @@ class GenerationManager:
         data_size = 0
         total_data = torch.tensor([])
         while data_size < nsamples:
-            _, (data,) = next(enumerate(self.original_data))
+            _, (data,_) = next(enumerate(self.original_data))
             total_data = torch.concat([total_data, data])
             data_size += data.size()[0]
-        return total_data.squeeze(1)[:nsamples]
+        return total_data[:nsamples]
     
     # Create an animation of the generation of original data, saved in self.history,
     # and save it to a file.
@@ -114,7 +122,8 @@ class GenerationManager:
                 limit_nb_orig_data = 5000):
         
         original_data = self.load_original_data(limit_nb_orig_data)
-
+        original_data = original_data.squeeze(1)
+        
         def draw_frame(i):
             plt.clf()
             Xvis = self.history[i].cpu().squeeze(1)
