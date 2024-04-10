@@ -18,7 +18,6 @@ class DiffusionBlock(nn.Module):
                  group_norm,
                  activation = nn.SiLU):
         super(DiffusionBlock, self).__init__()
-        # ciao 
         self.skip_connection = skip_connection # boolean
         self.act = activation(inplace=False)
         
