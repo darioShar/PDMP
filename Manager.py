@@ -95,8 +95,14 @@ class Manager:
                         break
                 device = self.pdmp.device
                 # generate random speed
-                Vbatch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*Xbatch.shape[0],))]
-                Vbatch = Vbatch.reshape(Xbatch.shape[0], 1, 2)
+                if self.pdmp.sampler == 'ZigZag':
+                    Vbatch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*Xbatch.shape[0],))]
+                    Vbatch = Vbatch.reshape(Xbatch.shape[0], 1, 2)
+                elif self.pdmp.sampler == 'HMC':
+                    Vbatch = torch.randn_like(Xbatch)
+                else:
+                    raise ValueError('Unknown sampler')
+                
 
                 # generate random time horizons
                 time_horizons = self.pdmp.T * (torch.rand(Xbatch.shape[0])**2)
@@ -108,11 +114,15 @@ class Manager:
                 x = Xbatch.clone()
                 v = Vbatch.clone()
                 
-                # apply the forward process
+                # apply the forward process. Everything runs on the cpu.
                 self.pdmp.forward(Xbatch, t, Vbatch)
                 
                 # check that the data has been modified
-                assert ((x != Xbatch).any()) and ((v != Vbatch).any())
+                #idx = (x == Xbatch)
+                #print(idx, x[idx], Xbatch[idx])
+                #idx = (v == Vbatch)
+                #print(idx, v[idx], Vbatch[idx])
+                assert ((x == Xbatch).logical_not()).any() and ((v == Vbatch).logical_not()).any()
                 # check that the time horizon has been reached for all data
                 assert not (t != 0.).any()
                 

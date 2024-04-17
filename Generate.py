@@ -35,7 +35,8 @@ class GenerationManager:
                  clip_denoised = False,
                  print_progession = False,
                  use_samples = None,
-                 get_sample_history = False):
+                 get_sample_history = False,
+                 reduce_timesteps = 1.):
         _, (data, _) = next(enumerate(self.original_data))
         size = list(data.size())
         size[0] = nsamples
