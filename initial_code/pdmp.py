@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 class PDMP:
     
-    def __init__(self, time_horizon = 10, reverse_steps = 200, device = None, sampler_name = 'ZigZag'):
+    def __init__(self, time_horizon = 10, reverse_steps = 200, device = None, sampler_name = 'ZigZag', refresh_rate = 1.):
         self.dim = 2
         self.Sigma = torch.eye(self.dim)
         self.Sigma_inv = torch.linalg.inv(self.Sigma)
@@ -20,6 +20,7 @@ class PDMP:
         self.reverse_steps = reverse_steps
         self.device = 'cpu' if device is None else device
         self.sampler = sampler_name
+        self.refreshment_rate = refresh_rate
         # print(self.Q)
     
     # generate data
@@ -68,7 +69,7 @@ class PDMP:
         return chain
     
     def refresh_given_rate(self, x, v, t, lambdas, s, model):
-        lambdas[lambdas == 0.] += 1e-9
+        # lambdas[lambdas == 0.] += 1e-9
         event_time = torch.distributions.exponential.Exponential(lambdas)
         temp = event_time.sample()
         #temp = temp.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
@@ -77,11 +78,11 @@ class PDMP:
              t * torch.ones(x.shape[0], 1, 1).to(self.device)),
                dim = -1).to(self.device)
             ).sample()
-        print(temp[temp <= s].shape)
-        print((tmp[temp <= s]))
+        # print(temp[temp <= s].shape)
+        # print((tmp[temp <= s]))
         v[temp <= s] = tmp[temp <= s]
 
-    def splitting_HMC_DRD(self, model, T, N, refresh_rate = 1., nsamples = None, x_init=None, v_init=None, print_progession = False):
+    def splitting_HMC_DRD(self, model, T, N, nsamples = None, x_init=None, v_init=None, print_progession = False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
@@ -111,10 +112,10 @@ class PDMP:
                 delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
                 chain.append(torch.concat((x, v), dim = -1))
                 # compute x_n-1 from x_n
-                x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
-                v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 x_init = x.clone()
                 v_init = v.clone()
+                x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
+                v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 # model outputs one value per data point.
                 # need to make sure who's model
@@ -124,19 +125,20 @@ class PDMP:
                                                  ).to(self.device)).log_prob(v) #[:, :, :2]
                 log_p_t_model = log_p_t_model.squeeze(-1)
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
-                switch_rate = torch.exp(log_nu_v - log_p_t_model) * refresh_rate
+                switch_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
+                # print(switch_rate)
                 self.refresh_given_rate(x, v, time_mid, switch_rate, delta, model)
-                x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
-                v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 x_init = x.clone()
                 v_init = v.clone()
+                x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
+                v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 #print(x, v)
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
         chain.append(torch.concat((x, v), dim = -1))
         return chain
 
     
-    def forward(self, data, t, speed = None, refreshment_rate = 1.):
+    def forward(self, data, t, speed = None):
         #new_data = data.clone()
         #time_horizons = t.clone().detach()
         if self.sampler == 'ZigZag':
@@ -149,7 +151,7 @@ class PDMP:
             if speed is None:
                 speed = torch.randn_like(data).to(self.device)
             while (t > 0.).any():
-                self.HMC_gauss_1event(data, speed, t, refreshment_rate=refreshment_rate)
+                self.HMC_gauss_1event(data, speed, t)
                 #speed = torch.randn_like(data)
                 speed[t > 0] = torch.randn_like(speed[t > 0])
         elif self.sampler == 'BPS':
@@ -162,7 +164,6 @@ class PDMP:
     def reverse_sampling(self,
                         nsamples,
                         model,
-                        refresh_rate = 1.,
                         initial_data = None, # sample from Gaussian, else use this initial_data
                         print_progession = False
                         ):
@@ -176,7 +177,6 @@ class PDMP:
             chain = torch.stack(self.splitting_HMC_DRD(model, 
                                                    self.T, 
                                                    self.reverse_steps, 
-                                                   refresh_rate=1.,
                                                    nsamples = nsamples,
                                                    print_progession=print_progession))
         return chain
@@ -264,10 +264,10 @@ class PDMP:
     def generate_refreshment_time_per_data_point(tmp):
         return -torch.log(torch.rand((tmp.shape[0]))).reshape(-1, *([1]*len(tmp.shape[1:]))).repeat(1, *tmp.shape[1:])
     
-    def HMC_gauss_1event(self, x, v, time_horizons, refreshment_rate=1.0):
+    def HMC_gauss_1event(self, x, v, time_horizons):
 
         # Δt_refresh = -torch.log(torch.rand(x.shape[0])) / (refreshment_rate)
-        Δt_refresh = -torch.log(torch.rand((x.shape[0]))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:]) / (refreshment_rate)
+        Δt_refresh = -torch.log(torch.rand((x.shape[0]))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:]) / (self.refreshment_rate)
         #Δt_refresh = Δt_refresh.to(self.device)
         x_old = x.clone()
         x *= torch.cos(torch.minimum(time_horizons,Δt_refresh))
