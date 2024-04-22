@@ -55,14 +55,14 @@ class PDMP:
                 delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
                 chain.append(torch.concat((x, v), dim = -1))
                 # compute x_n-1 from x_n
-                x = x - v * delta / 2 # x - v * δ / 2
+                x -= v * delta / 2 # x - v * δ / 2
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
                                     (torch.ones(x.shape[0])*time_mid).to(self.device))[:, :, :2]
                 #print(density_ratio.mean(dim=0))
                 switch_rate = density_ratio.cpu()* torch.maximum(torch.zeros(x.shape), -v * x)
                 self.flip_given_rate(v, switch_rate, delta)
-                x = x - v * delta / 2 #x - v * δ / 2
+                x -= v * delta / 2 #x - v * δ / 2
                 #print(x, v)
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
         chain.append(torch.concat((x, v), dim = -1))
@@ -118,7 +118,6 @@ class PDMP:
                 v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 # model outputs one value per data point.
-                # need to make sure who's model
                 log_p_t_model = model(torch.cat((x,
                                                  time_mid * torch.ones(x.shape[0], 1, 1).to(self.device)), 
                                                  dim = -1
@@ -137,6 +136,122 @@ class PDMP:
         chain.append(torch.concat((x, v), dim = -1))
         return chain
 
+    def reflect_given_rate(lambdas, v, v_reflect, s):
+        lambdas[lambdas == 0.] += 1e-9
+        event_time = torch.distributions.exponential.Exponential(lambdas)
+        v[event_time < s] = v_reflect[event_time < s]
+    
+    def splitting_BPS_RDBDR(self, model, T, N, nsamples = None, x_init=None, v_init=None, print_progession = False):
+        if print_progession:
+            print_progession = lambda x : tqdm(x)
+        else:
+            print_progession = lambda x : x
+    
+        timesteps = torch.linspace(1, 0, N+1)**2 * T
+        timesteps = timesteps.to(self.device)
+        #timesteps = timesteps.flip(dims = (0,))
+        #times = T - deltas.cumsum(dim = 0)
+        assert (nsamples is not None) or (x_init is not None) or (v_init is not None) 
+        if x_init is None:
+            x_init = torch.randn(nsamples, 1, 2)
+        if v_init is None:
+            v_init = torch.randn(nsamples, 1, 2)
+        #chain = [pdmp.Skeleton(torch.clone(x_init), torch.clone(v_init), 0.)]
+        chain = []
+
+        x_init = x_init.to(self.device)
+        v_init = v_init.to(self.device)
+
+        x = x_init.clone()
+        v = v_init.clone()
+        model.eval()
+        with torch.inference_mode():
+            for i in print_progession(range(int(N))):
+                time = timesteps[i]
+                delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
+                chain.append(torch.concat((x, v), dim = -1))
+
+                # half a step R
+                log_p_t_model = model(torch.cat((x,
+                                                 time * torch.ones(x.shape[0], 1, 1).to(self.device)), 
+                                                 dim = -1
+                                                 ).to(self.device)).log_prob(v) #[:, :, :2]
+                log_p_t_model = log_p_t_model.squeeze(-1)
+                log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
+                refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
+                self.refresh_given_rate(x, v, time, refresh_rate, delta/2, model)
+
+                # half a step D
+                x -= v * delta/2
+
+                # a full step B
+                # time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
+                # scal_prod = torch.sum(v * x, dim = 2).squeeze(-1)
+                # mask = scal_prod < 0
+                # scal_prod = scal_prod.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                # norm_x = torch.sum(x[mask]**2,dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                # v_reflect = v[mask] - 2*scal_prod[mask]*x[mask]/norm_x
+                # log_p_t_refl = model(torch.cat((x[mask],
+                #                                  time_mid * torch.ones(x[mask].shape[0], 1, 1).to(self.device)), 
+                #                                  dim = -1
+                #                                  ).to(self.device)).log_prob(v_reflect).squeeze(-1) #[:, :, :2]
+                # # print("switchrate ",switch_rate.shape)
+                # log_p_t = model(torch.cat((x[mask],
+                #                                  time_mid * torch.ones(x[mask].shape[0], 1, 1).to(self.device)), 
+                #                                  dim = -1
+                #                                  ).to(self.device)).log_prob(v[mask]).squeeze(-1)
+                # scal_prod = scal_prod[mask]
+                # scal_prod = scal_prod[...,0].squeeze(-1)
+                # switch_rate = torch.maximum(-scal_prod,torch.zeros(scal_prod.shape).to(self.device)).to(self.device)
+                # switch_rate *= torch.exp(log_p_t_refl-log_p_t)
+                # event_time = torch.distributions.exponential.Exponential(switch_rate)
+                # # temp = 2*delta*torch.ones(v.shape[0]).to(self.device)
+                # temp = event_time.sample()
+                # # print(temp.shape)
+                # v[mask][temp <= delta] = v_reflect[temp <= delta]
+
+                ## full implementation
+                time_mid = time - delta/ 2
+                scal_prod = torch.sum(v * x, dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                # print("scal_prod", scal_prod.shape)
+                norm_x = torch.sum(x**2,dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                v_reflect = v - 2*scal_prod*x/norm_x
+                # print(v_reflect.shape)
+                log_p_t_refl = model(torch.cat((x,
+                                                 time_mid * torch.ones(x.shape[0], 1, 1).to(self.device)), 
+                                                 dim = -1
+                                                 ).to(self.device)).log_prob(v_reflect).squeeze(-1) #[:, :, :2]
+                # print("switchrate ",switch_rate.shape)
+                log_p_t = model(torch.cat((x,
+                                                 time_mid * torch.ones(x.shape[0], 1, 1).to(self.device)), 
+                                                 dim = -1
+                                                 ).to(self.device)).log_prob(v).squeeze(-1)
+                scal_prod = scal_prod[...,0].squeeze(-1)
+                # print(scal_prod.shape)
+                switch_rate = torch.maximum(-scal_prod,torch.zeros(scal_prod.shape).to(self.device)).to(self.device)
+                switch_rate *= torch.exp(log_p_t_refl-log_p_t)
+                switch_rate[switch_rate == 0.] += 1e-9
+                # print("switchrate ",switch_rate.shape)
+                event_time = torch.distributions.exponential.Exponential(switch_rate)
+                temp = event_time.sample()
+                # print(temp.shape)
+                v[temp <= delta] = v_reflect[temp <= delta]
+
+
+                # half a step D
+                x -= v * delta/2
+
+                # half a step R
+                log_p_t_model = model(torch.cat((x,
+                                                 time_mid * torch.ones(x.shape[0], 1, 1).to(self.device)), 
+                                                 dim = -1
+                                                 ).to(self.device)).log_prob(v) #[:, :, :2]
+                log_p_t_model = log_p_t_model.squeeze(-1)
+                log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
+                refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
+                self.refresh_given_rate(x, v, time_mid, refresh_rate, delta/2, model)
+        chain.append(torch.concat((x, v), dim = -1))
+        return chain
     
     def forward(self, data, t, speed = None):
         #new_data = data.clone()
@@ -158,7 +273,7 @@ class PDMP:
             if speed is None:
                 speed = torch.randn(data.shape)
             while (t > 0.).any():
-                self.ZigZag_gauss_1event(data, speed, t)
+                self.BPS_gauss_1event(data, speed, t)
 
     
     def reverse_sampling(self,
@@ -175,6 +290,12 @@ class PDMP:
                                                    print_progession=print_progession))
         elif self.sampler == 'HMC':
             chain = torch.stack(self.splitting_HMC_DRD(model, 
+                                                   self.T, 
+                                                   self.reverse_steps, 
+                                                   nsamples = nsamples,
+                                                   print_progession=print_progession))
+        elif self.sampler == 'BPS':
+            chain = torch.stack(self.splitting_BPS_RDBDR(model, 
                                                    self.T, 
                                                    self.reverse_steps, 
                                                    nsamples = nsamples,
@@ -231,32 +352,65 @@ class PDMP:
         #output = output.mean()
         return output
 
+    def training_loss_bps(self, model, X_t, V_t, t):
+        # send to device
+        X_t = X_t.to(self.device)
+        V_t = V_t.to(self.device)
+        t = t.to(self.device)
+        
+        # tensor to give as input to the model. It is the concatenation of the position and the speed.
+        # X_V_t = torch.concat((X_t, V_t), dim = -1)
+        #print(time_horizons[0], X_V_t[0])
+        #print(X_V_t.mean(dim = 0), X_V_t.std(dim = 0))
+
+        # run the model
+        # output = model(X_V_t, t)
+
+
+        t = t.unsqueeze(-1).unsqueeze(-1)
+        # output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) 
+        # temp = V_t * X_t
+        # scal_prod = torch.sum(temp,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+        # norms_x = torch.sum(X_t**2,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+        # RV_t = V_t - 2*scal_prod * X_t / norms_x
+        # RV_t = RV_t.detach().clone()
+        # output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t) 
+        
+        # # compute the loss
+        # def g(x):
+        #     return (1 / (1+x))
+        # loss = g(torch.exp(output-output_reflected))**2
+        # loss = g(torch.exp(output_reflected-output))**2 + g(output_reflected)**2
+        # loss -= 2*g(output) 
+        # t = t.unsqueeze(-1).unsqueeze(-1)
+        loss = - model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
+        return loss
+
     def training_losses(self, model, X_t, V_t, t):
         if self.sampler == 'ZigZag':
             return self.training_losses_zigzag(model, X_t, V_t, t)
         elif self.sampler == 'HMC':
             return self.training_loss_hmc(model, X_t, V_t, t)
-        else:
-            raise ValueError('Unknown sampler: {}'.format(self.sampler))
+        elif self.sampler =='BPS':
+            return self.training_loss_bps(model, X_t, V_t, t)
 
     def switchingtime_gauss(self, a, b, u):
     # generate switching time for rate of the form max(0, a + b s)
         return -a/b + torch.sqrt((torch.maximum(torch.zeros(a.shape),a))**2/b**2 - 2 * torch.log(1-u)/b)
-    
 
-    def ZigZag_gauss_1event(self, x, v, time_horizons, excess_rate=0.0):
+    def ZigZag_gauss_1event(self, x, v, time_horizons):
 
         a = v * x
         b = v * v
 
         Δt_switches = self.switchingtime_gauss(a, b, torch.rand_like(a))
-        if excess_rate == 0.0:
+        if self.refreshment_rate == 0.0:
             # Δt_excess = torch.inf
             x += v * torch.minimum(time_horizons,Δt_switches)
             v[time_horizons>Δt_switches] *= -1
             time_horizons -= torch.minimum(time_horizons,Δt_switches)
         else:
-            Δt_excess = -torch.log(torch.rand_like(a)) / (excess_rate)
+            Δt_excess = -torch.log(torch.rand_like(a)) / (self.refreshment_rate)
             x += v * torch.minimum(time_horizons,torch.minimum(Δt_switches,Δt_excess))
             v[time_horizons > torch.minimum(Δt_switches,Δt_excess)] *= -1
             time_horizons -= torch.minimum(time_horizons,torch.minimum(Δt_switches,Δt_excess))
@@ -276,6 +430,28 @@ class PDMP:
         v -= x_old * torch.sin(torch.minimum(time_horizons,Δt_refresh))
         time_horizons -= torch.minimum(time_horizons,Δt_refresh)
 
+    def switchingtime_gauss(self, a, b, u):
+    # generate switching time for rate of the form max(0, a + b s)
+        return -a/b + torch.sqrt((torch.maximum(torch.zeros(a.shape),a))**2/b**2 - 2 * torch.log(1-u)/b)
+    
+    def BPS_gauss_1event(self, x, v, time_horizons):
+
+        a = v * x
+        a = torch.sum(a, dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+        b = v * v
+        b = torch.sum(b, dim=2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+        Δt_reflections = self.switchingtime_gauss(a, b, torch.rand_like(a))
+        
+        Δt_refresh = -torch.log(torch.rand((x.shape[0]))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:]) / (self.refreshment_rate)
+        x += v * torch.minimum(time_horizons,torch.minimum(Δt_reflections,Δt_refresh))
+        a = v * x
+        a = torch.sum(a, dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+        norm_x = torch.sum(x**2,dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+        mask = torch.logical_and(time_horizons > torch.minimum(Δt_reflections, Δt_refresh),Δt_reflections < Δt_refresh)
+        v[mask] -= (2 * x[mask]*a[mask]/norm_x[mask])
+        mask = torch.logical_and(time_horizons > torch.minimum(Δt_reflections,Δt_refresh), Δt_refresh<Δt_reflections)
+        v[mask] = torch.randn_like(v[mask])
+        time_horizons -= torch.minimum(time_horizons,torch.minimum(Δt_reflections,Δt_refresh))
 
 
 

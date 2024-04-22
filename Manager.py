@@ -100,8 +100,8 @@ class Manager:
                     Vbatch = Vbatch.reshape(Xbatch.shape[0], 1, 2)
                 elif self.pdmp.sampler == 'HMC':
                     Vbatch = torch.randn_like(Xbatch)
-                else:
-                    raise ValueError('Unknown sampler')
+                elif self.pdmp.sampler == 'BPS':
+                    Vbatch = torch.randn_like(Xbatch)
                 
 
                 # generate random time horizons
