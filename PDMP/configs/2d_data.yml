@@ -1,0 +1,79 @@
+seed: null
+
+data:
+  between_minus_1_1: true
+  quantile_cutoff: 0.98
+  data_alpha: 1.8
+  dataset: sas_grid #gmm_grid # sas_grid
+  isotropic: true
+  n_mixture: 9 # must be square. set to None if not a grid mixture
+  dim: 2 # if data_type is 2d and this is one, will just project on first dimension
+  normalized: true
+  nsamples: 10000
+  num_workers: 0 # number of workers for data loading
+  std: 0.05
+  theta: 1.0
+  weights:
+  #- 0.1
+  #- 0.1
+  #- 0.4
+  #- 0.4
+  - 0.01
+  - 0.1
+  - 0.3
+  - 0.2
+  - 0.02
+  - 0.15
+  - 0.02
+  - 0.15
+  - 0.05
+
+pdmp:
+  time_horizon: 10
+  reverse_steps: 200
+  sampler_name: BPS # ZigZag, BPS, HMC
+  refresh_rate: 1.
+
+eval:
+  data_to_generate: 5000
+  reduce_timesteps: 1.
+  clip_denoised: false
+
+model:
+  # this is for ZigZag
+  a_emb_size: 32
+  a_pos_emb: false
+  act: silu
+  compute_gamma: false
+  dropout_rate: 0.0
+  group_norm: true
+  nblocks: 2
+  no_a: true
+  nunits: 64
+  skip_connection: true
+  time_emb_size: 8
+  time_emb_type: learnable
+  use_a_t: false
+  # this is for the other samplers; normalizing flows
+  transforms: 3
+  hidden_width: 128
+  hidden_depth: 3
+
+training:
+  bs: 512
+  ema_rates: null
+  #- 0.9
+  grad_clip: null #1.0 #1.0
+
+optim:
+  lr: 0.001
+  lr_steps: 2000
+  optimizer: adamw
+  schedule: null #linear
+  warmup: 0
+
+run:
+  epochs: 50
+  eval_freq: 25
+  checkpoint_freq: 25
+  progress: true # print progress bar
