@@ -11,11 +11,11 @@ Todo
 
 ## How to run
 
-Open and modify ***./PDMP/config/2d_data.yml*** to configurate the run (on 2d datasets). You will find all relevant adjustable parameters. Run in the command line with
+Open and modify ***./PDMP/config/2d_data.yml*** to configurate the run (on 2d datasets). You will find all relevant adjustable parameters. To effectively launch an experiment, launch the `./run_PDMP.py` script:
 
 `python ./run_PDMP.py --config 2d_data --name {pdmp_experiment_name}`
 
-this will save the results in ***./models/{pdmp_experiment_name}***. In particular, the **run** subparameters control the following:
+this will save the results in ***./models/{pdmp_experiment_name}***. In particular, the **run** subparameters in `2d_data.yml` control the following:
 * ***epochs***: number of epochs
 * ***eval_freq***: number of epochs between each evaluation
 * ***checkpoint_freq***: number of epochs between each model checkpoint
