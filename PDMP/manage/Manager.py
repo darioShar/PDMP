@@ -12,17 +12,17 @@ class Manager:
     def __init__(self, 
                  model, 
                  data,
-                 pdmp, 
+                 noising_process, 
                  optimizer,
                  learning_schedule,
                  eval,
-                 ema_rates,
                  logger = None,
+                 ema_rates = None,
                  **kwargs):
         self.train_loop = TrainLoop.TrainLoop()
         self.model = model
         self.data = data
-        self.pdmp = pdmp
+        self.noising_process = noising_process
         self.optimizer = optimizer
         self.learning_schedule = learning_schedule
         if ema_rates is None:
@@ -65,7 +65,7 @@ class Manager:
         self.train_loop.epoch(
             dataloader = self.data,
             model = self.model,
-            pdmp = self.pdmp,
+            noising_process = self.noising_process,
             optimizer = self.optimizer,
             learning_schedule = self.learning_schedule,
             ema_models=self.ema_models,
@@ -88,11 +88,7 @@ class Manager:
         raise ValueError('No EMA model with mu = {}'.format(mu))
 
     # do this on another eval object
-    def evaluate_emas(self,
-                    ddim = None,
-                    eval_eta = None,
-                    reduce_timesteps = None,
-                    data_to_generate = None):
+    def evaluate_emas(self, **kwargs):
         # get a copy of the model
         #tmp_model = copy.deepcopy(self.model)
         # assign it to eval 
@@ -106,11 +102,7 @@ class Manager:
                 def callback_on_logging(logger, key, value):
                     if not (key in ['losses', 'losses_batch']):
                         logger.log('_'.join(('ema', str(mu), str(key))), value)
-                eval_ema.evaluate_model(ddim = ddim if ddim is not None else self.eval.kwargs['ddim'],
-                                    eval_eta = eval_eta if eval_eta is not None else self.eval.kwargs['eval_eta'],
-                                    reduce_timesteps = reduce_timesteps if reduce_timesteps is not None else self.eval.kwargs['reduce_timesteps'],
-                                    data_to_generate = data_to_generate if data_to_generate is not None else self.eval.kwargs['data_to_generate'],
-                                    callback_on_logging = callback_on_logging) 
+                eval_ema.evaluate_model(callback_on_logging = callback_on_logging, **kwargs) 
                 # all other parameters are left unchanged
             
 
@@ -121,7 +113,7 @@ class Manager:
         return self.train_loop.total_steps
     
     def load(self, filepath):
-        checkpoint = torch.load(filepath, map_location=torch.device(self.pdmp.device))
+        checkpoint = torch.load(filepath, map_location=torch.device(self.noising_process.device))
         self.model.load_state_dict(checkpoint['model_parameters'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         if self.learning_schedule is not None:

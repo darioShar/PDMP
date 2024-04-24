@@ -41,24 +41,24 @@ class LevyDiffusionModel(nn.Module):
         'one_dimensional_input'
     ]
 
-    def __init__(self, p):
+    def __init__(self, nfeatures, device, p_model_mlp):
         super(LevyDiffusionModel, self).__init__()
 
         # extract from param dict
-        self.nfeatures =        2*p['data']['dim'] # x_t and v_t
-        self.use_a_t =          p['model']['use_a_t']
-        self.no_a =             p['model']['no_a']
-        self.a_pos_emb =        p['model']['a_pos_emb']
-        self.a_emb_size =       p['model']['a_emb_size']
-        self.time_emb_type =    p['model']['time_emb_type'] 
-        self.time_emb_size =    p['model']['time_emb_size']
-        self.nblocks =          p['model']['nblocks'] 
-        self.nunits =           p['model']['nunits']
-        self.skip_connection =  p['model']['skip_connection']
-        self.group_norm =       p['model']['group_norm']
-        self.dropout_rate =     p['model']['dropout_rate']
-        self.device =           p['device']
-        self.compute_gamma =    p['model']['compute_gamma']
+        self.nfeatures =        nfeatures # x_t and v_t
+        self.use_a_t =          p_model_mlp['use_a_t']
+        self.no_a =             p_model_mlp['no_a']
+        self.a_pos_emb =        p_model_mlp['a_pos_emb']
+        self.a_emb_size =       p_model_mlp['a_emb_size']
+        self.time_emb_type =    p_model_mlp['time_emb_type'] 
+        self.time_emb_size =    p_model_mlp['time_emb_size']
+        self.nblocks =          p_model_mlp['nblocks'] 
+        self.nunits =           p_model_mlp['nunits']
+        self.skip_connection =  p_model_mlp['skip_connection']
+        self.group_norm =       p_model_mlp['group_norm']
+        self.dropout_rate =     p_model_mlp['dropout_rate']
+        self.compute_gamma =    p_model_mlp['compute_gamma']
+        self.device =           device
         # to be computed later depending on chosen architecture
         self.additional_dim =   0 
 

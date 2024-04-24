@@ -17,7 +17,7 @@ class TrainLoop:
     def epoch(self, 
                 dataloader, 
                 model, 
-                pdmp, 
+                noising_process, 
                 optimizer,
                 learning_schedule,
                 ema_models,
@@ -27,7 +27,8 @@ class TrainLoop:
                 epoch_callback = None,
                 progress_batch = False,
                 epoch_pbar = None,
-                max_batch_per_epoch = None):
+                max_batch_per_epoch = None,
+                **kwargs):
         model.train()
         if progress_batch:
             progress_batch = lambda x : tqdm(x)
@@ -40,39 +41,10 @@ class TrainLoop:
                 if max_batch_per_epoch is not None:
                     if i >= max_batch_per_epoch:
                         break
-                # generate random speed
-                if pdmp.sampler == 'ZigZag':
-                    Vbatch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*Xbatch.shape[0],))]
-                    Vbatch = Vbatch.reshape(Xbatch.shape[0], 1, 2)
-                elif pdmp.sampler == 'HMC':
-                    Vbatch = torch.randn_like(Xbatch)
-                elif pdmp.sampler == 'BPS':
-                    Vbatch = torch.randn_like(Xbatch)
                 
-                # generate random time horizons
-                time_horizons = pdmp.T * (torch.rand(Xbatch.shape[0])**2)
-
-                # must be of the same shape as Xbatch for the pdmp forward process, since it will be applied component wise
-                t = time_horizons.clone().detach().unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 2)
-                
-                # clone our initial data, since it will be modified by forward process
-                x = Xbatch.clone()
-                v = Vbatch.clone()
-                
-                # apply the forward process. Everything runs on the cpu.
-                pdmp.forward(Xbatch, t, Vbatch)
-                
-                # check that the data has been modified
-                #idx = (x == Xbatch)
-                #print(idx, x[idx], Xbatch[idx])
-                #idx = (v == Vbatch)
-                #print(idx, v[idx], Vbatch[idx])
-                assert ((x == Xbatch).logical_not()).any() and ((v == Vbatch).logical_not()).any()
-                # check that the time horizon has been reached for all data
-                assert not (t != 0.).any()
-                
-                loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
-                loss = loss.mean()
+                loss = noising_process.training_losses(model, Xbatch, **kwargs)
+                #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
+                #loss = loss.mean()
                 #print('loss computed')
                 # and finally gradient descent
                 optimizer.zero_grad()

@@ -253,11 +253,15 @@ def fid_score(path1, path2, batch_size=50, device=None, dims=2048, num_workers=4
 from prdc import compute_prdc
 
 def get_features(path, model, batch_size=50, dims=2048, device='cpu',
-                 num_workers=1):
+                 num_workers=1, max_num_files=None):
     
     path = pathlib.Path(path)
     files = sorted([file for ext in IMAGE_EXTENSIONS
                     for file in path.glob('*.{}'.format(ext))])
+    
+    if max_num_files is not None:
+        assert len(files) >= max_num_files, 'Not enough images in folder {}. {} instead of required min of {}'.format(path, len(files), max_num_files)
+        files = files[:max_num_files]
     
     model.eval()
 
@@ -296,7 +300,7 @@ def get_features(path, model, batch_size=50, dims=2048, device='cpu',
 
     return pred_arr
 
-def prdc(path1, path2, batch_size=500, device=None, dims=2048, num_workers=0):
+def prdc(path1, path2, batch_size=500, device=None, dims=2048, num_workers=0, max_num_files=None):
     
     if device is None:
         device = torch.device('cuda' if (torch.cuda.is_available()) else 'cpu')
@@ -313,12 +317,12 @@ def prdc(path1, path2, batch_size=500, device=None, dims=2048, num_workers=0):
     else:
         num_workers = num_workers
     
-    real_features = get_features(path1, model, batch_size, dims, device, num_workers)
+    real_features = get_features(path1, model, batch_size, dims, device, num_workers, max_num_files=max_num_files)
     real_features = np.stack(real_features)
     
     print(f"real_features : {real_features.shape}")
     
-    fake_features = get_features(path2, model, batch_size, dims, device, num_workers)
+    fake_features = get_features(path2, model, batch_size, dims, device, num_workers, max_num_files=max_num_files)
     fake_features = np.stack(fake_features)
     
     print(f"fake_features : {fake_features.shape}")

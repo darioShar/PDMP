@@ -24,7 +24,7 @@ class Eval:
 
     def __init__(self,
                  model, 
-                 pdmp,
+                 noising_process,
                  dataloader,
                  dataset_files,
                  verbose = True,
@@ -41,7 +41,7 @@ class Eval:
         self.evaluation_files = 10000
 
         self.model = model 
-        self.pdmp = pdmp
+        self.noising_process = noising_process
         self.dataloader = dataloader
         self.dataset_files = dataset_files
         self.verbose = verbose
@@ -53,7 +53,7 @@ class Eval:
         self.kwargs = kwargs
         self.reset()
         self.gen_model = Gen.GenerationManager(model = self.model,
-                                               pdmp = self.pdmp,
+                                               noising_process = self.noising_process,
                                               dataloader=self.dataloader,
                                               is_image = self.is_image)
         # create directory for saving images
@@ -165,23 +165,21 @@ class Eval:
 
     # compute evaluatin metrics
     def _evaluate_model(self,
-                       reduce_timesteps = 1., # divide by reduce_timesteps
-                       data_to_generate = 5000,
+                        data_to_generate,
                        fig_lim = 3,
-                       clip_denoised = False,
-                       callback_on_logging = None):
+                       callback_on_logging = None,
+                       **kwargs):
         
         eval_results = {}
         #wasserstein. Do not compute if image
         if not self.is_image:
             
-            data_to_gen_wass = data_to_generate #min(data_to_generate, 128)
+            data_to_generate #min(data_to_generate, 128)
 
             # generate data to evaluate
             self.gen_model.generate(data_to_generate, 
-                            reduce_timesteps = reduce_timesteps,
                             print_progression= True,
-                            clip_denoised = clip_denoised)
+                            **kwargs)
             # prepare data. REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT
             gen_samples = self.gen_model.samples
             
@@ -229,17 +227,14 @@ class Eval:
                 total_generated_data = 0
                 while remaining > 0:
                     print(remaining, end = ' ')
-                    self.gen_model.generate(min(data_batch_size, remaining), 
-                                    ddim=ddim, 
-                                    eta = eval_eta, 
-                                    reduce_timesteps = reduce_timesteps,
-                                    print_progression= True,
-                                    clip_denoised = clip_denoised)
+                    self.gen_model.generate(min(data_batch_size, remaining),
+                                            print_progression= True,
+                                            **kwargs)
                     # save data to file. We do that rather than concatenating to save on memory, 
                     # but really it is because I want to inspect the images while they are generated
                     print('saving {} generated images'.format(self.gen_model.samples.shape[0]))
-                    for i in range(total_generated_data, total_generated_data + self.gen_model.samples.shape[0]):
-                        tvu.save_image(self.gen_model.samples[i], os.path.join(self.generated_data_path, f"{i}.png"))
+                    for i in range(self.gen_model.samples.shape[0]):
+                        tvu.save_image(self.gen_model.samples[i], os.path.join(self.generated_data_path, f"{i+total_generated_data}.png"))
                     total_generated_data += self.gen_model.samples.shape[0]
                     #gen_samples = torch.cat((gen_samples, self.gen_model.samples), dim = 0)
                     remaining = remaining - self.gen_model.samples.shape[0]
@@ -260,7 +255,8 @@ class Eval:
                             self.generated_data_path, 
                             128, # batch size 
                             self.pdmp.device, 
-                            num_workers= 4 if self.is_image else 0)
+                            num_workers= 4 if self.is_image else 0,
+                            max_num_files=total_generated_data)
         
         for k, v in prdc_value.items():
             eval_results[k] = v

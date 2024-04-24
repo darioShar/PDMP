@@ -3,74 +3,110 @@ seed: null
 data:
   between_minus_1_1: true
   quantile_cutoff: 0.98
-  data_alpha: 1.8
-  dataset: sas_grid #gmm_grid # sas_grid
+  data_alpha: 2.0
+  dataset: gmm_grid #gmm_grid # sas_grid
   isotropic: true
-  n_mixture: 9 # must be square. set to None if not a grid mixture
+  n_mixture: 4 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: true
   nsamples: 10000
+  bs: 512 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.05
   theta: 1.0
   weights:
-  #- 0.1
-  #- 0.1
-  #- 0.4
-  #- 0.4
-  - 0.01
   - 0.1
-  - 0.3
-  - 0.2
-  - 0.02
-  - 0.15
-  - 0.02
-  - 0.15
-  - 0.05
+  - 0.4
+  - 0.4
+  - 0.1
+  #- 0.01
+  #- 0.1
+  #- 0.3
+  #- 0.2
+  #- 0.02
+  #- 0.15
+  #- 0.02
+  #- 0.15
+  #- 0.05
+
+noising_process: 'pdmp' # pdmp, diffusion, None
+
+diffusion:
+  alpha: 2.0
+  clamp_a: null
+  clamp_eps: null
+  diffusion_steps: 100
+  LIM: false
+  isotropic: true
+  rescale_timesteps: true
+  mean_predict: EPSILON
+  var_predict: FIXED
+  loss_type: LP_EPS_LOSS
 
 pdmp:
+  sampler_name: BPS # ZigZag, BPS, HMC
   time_horizon: 10
   reverse_steps: 200
-  sampler_name: BPS # ZigZag, BPS, HMC
   refresh_rate: 1.
 
 eval:
   data_to_generate: 5000
-  reduce_timesteps: 1.
-  clip_denoised: false
+  pdmp:
+    reduce_timesteps: 1.
+    #clip_denoised: false
+    #new_time_spacing
+  # for diffusion
+  diffusion:
+    reduce_timesteps: 1.
+    clip_denoised: false
+    ddim: false
+    eta: 1.0
+    #new_time_spacing
 
 model:
-  # this is for ZigZag
-  a_emb_size: 32
-  a_pos_emb: false
-  act: silu
-  compute_gamma: false
-  dropout_rate: 0.0
-  group_norm: true
-  nblocks: 2
-  no_a: true
-  nunits: 64
-  skip_connection: true
-  time_emb_size: 8
-  time_emb_type: learnable
-  use_a_t: false
+  # this is for 2d ZigZag, and 2d diffusion
+  mlp:
+    a_emb_size: 32
+    a_pos_emb: false
+    act: silu
+    compute_gamma: false
+    dropout_rate: 0.0
+    group_norm: true
+    nblocks: 2
+    no_a: true
+    nunits: 64
+    skip_connection: true
+    time_emb_size: 8
+    time_emb_type: learnable
+    use_a_t: false
   # this is for the other samplers; normalizing flows
-  transforms: 3
-  hidden_width: 128
-  hidden_depth: 3
+  normalizing_flow:
+    transforms: 3
+    hidden_width: 128
+    hidden_depth: 3
 
 training:
-  bs: 512
-  ema_rates: null
-  #- 0.9
-  grad_clip: null #1.0 #1.0
+  pdmp:
+    ema_rates: null
+    #- 0.9
+    grad_clip: null #1.0
+  diffusion:
+    ema_rates: null
+    #- 0.9
+    grad_clip: null #1.0
+    loss_monte_carlo: mean # loss to apply on batch of M number of a's. can be mean or median
+    lploss: 2.
+    monte_carlo_steps: 1 # for each t, x_0, z_t, number of different a_t_1, a_t' to generate
+    monte_carlo_groups: 1 # number groups: will take median of means of monte_carlo_groups of a's
 
 optim:
-  lr: 0.001
-  lr_steps: 2000
   optimizer: adamw
-  schedule: null #linear
-  warmup: 0
+  schedule: null #steplr, linear
+  lr: 0.005
+  warmup: 0 #1000
+  lr_steps: 300000
+  lr_step_size: 400
+  lr_gamma: 0.99
 
 run:
   epochs: 50

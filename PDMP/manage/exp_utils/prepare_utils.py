@@ -20,6 +20,7 @@ from transformers import get_scheduler
 
 from PDMP.datasets import get_dataset, is_image_dataset
 from PDMP.manage.exp_utils.file_utils import hash_parameters, hash_parameters_eval
+import PDMP.compute.Diffusion as Diffusion
 
 import zuko
 
@@ -62,17 +63,23 @@ def init_model_by_parameter(p):
     # model
     if not is_image_dataset(p['data']['dataset']):
         # model
-        if p['pdmp']['sampler_name'] == 'ZigZag':
-            model = Model.LevyDiffusionModel(p)
+        if p['noising_process'] == 'diffusion':
+            model = Model.LevyDiffusionModel(nfeatures = p['data']['dim'],
+                                             device=p['device'], 
+                                             p_model_mlp=p['model']['mlp'])
+        elif p['pdmp']['sampler_name'] == 'ZigZag':
+            model = Model.LevyDiffusionModel(nfeatures = 2*p['data']['dim'], # takes X_t, V_t as input
+                                             device=p['device'], 
+                                             p_model_mlp=p['model']['mlp'])
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
-            model = zuko.flows.NSF(p['data']['dim'], 
-                                   p['data']['dim'] + 1, 
-                                   transforms=p['model']['transforms'], #3, 
-                                   hidden_features= [p['model']['hidden_width']] * p['model']['hidden_depth'] ) #[128] * 3)
+            model = zuko.flows.NSF(p['data']['dim'], # generates V_t
+                                   p['data']['dim'] + 1,  # takes X_t, t as conditioning
+                                   transforms=p['model']['normalizing_flow']['transforms'], #3, 
+                                   hidden_features= [p['model']['normalizing_flow']['hidden_width']] * p['model']['normalizing_flow']['hidden_depth'] ) #[128] * 3)
         model = model.to(p['device'])
     else:
-        assert p['pdmp']['sampler_name'] == 'ZigZag', 'Normalizing flows not yet implemented for image data.'
+        assert p['pdmp']['sampler_name'] == 'ZigZag', 'Normalizing flows/other methods not yet implemented for image data.'
         model = _unet_model(p)
         model = model.to(p['device'])
     return model
@@ -83,26 +90,42 @@ def init_data_by_parameter(p):
     dataset_files, test_dataset_files = get_dataset(p)
     # implement DDP later on
     data = DataLoader(dataset_files, 
-                      batch_size=p['training']['bs'], 
+                      batch_size=p['data']['bs'], 
                       shuffle=True, 
                       num_workers=p['data']['num_workers'])
     test_data = DataLoader(test_dataset_files,
-                            batch_size=p['training']['bs'],
+                            batch_size=p['data']['bs'],
                             shuffle=True,
                             num_workers=p['data']['num_workers'])
     return data, test_data, dataset_files, test_dataset_files
 
-def init_pdmp_by_parameter(p):
+def init_noising_process_by_parameter(p):
     #gammas = Diffusion.LevyDiffusion.gen_noise_schedule(p['diffusion']['diffusion_steps']).to(p['device'])
-    pdmp = PDMP.PDMP(
-                    device = p['device'],
-                    time_horizon = p['pdmp']['time_horizon'],
-                    reverse_steps = p['pdmp']['reverse_steps'],
-                    sampler_name = p['pdmp']['sampler_name'],
-                    refresh_rate = p['pdmp']['refresh_rate'],
-                    dim = p['data']['dim'],
-                    )
-    return pdmp
+    if p['noising_process'] == 'pdmp':
+        noising_process = PDMP.PDMP(
+                        device = p['device'],
+                        time_horizon = p['pdmp']['time_horizon'],
+                        reverse_steps = p['pdmp']['reverse_steps'],
+                        sampler_name = p['pdmp']['sampler_name'],
+                        refresh_rate = p['pdmp']['refresh_rate'],
+                        dim = p['data']['dim'],
+                        )
+    elif p['noising_process'] == 'diffusion':
+        noising_process = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],
+                                   device = p['device'],
+                                   diffusion_steps = p['diffusion']['diffusion_steps'],
+                                   model_mean_type = p['diffusion']['mean_predict'],
+                                   model_var_type = p['diffusion']['var_predict'],
+                                   loss_type = p['diffusion']['loss_type'],
+                                   rescale_timesteps = p['diffusion']['rescale_timesteps'],
+                                   isotropic = p['diffusion']['isotropic'],
+                                   clamp_a=p['diffusion']['clamp_a'],
+                                   clamp_eps=p['diffusion']['clamp_eps'],
+                                   LIM = p['diffusion']['LIM'],
+                                   diffusion_settings=p['diffusion'],
+                                   #config = p['LIM_config'] if p['LIM'] else None
+                                   )
+    return noising_process
 
 
 def init_optimizer_by_parameter(model, p):
@@ -132,25 +155,31 @@ def init_ls_by_parameter(optim, p):
         )
     return lr_scheduler
 
-def init_eval_by_parameter(model, pdmp, data, dataset_files, logger, p):
+def init_eval_by_parameter(model, noising_process, data, dataset_files, logger, p):
+
+    # here kwarsg is passed to evaluate function, and to the underlying Generation Manager.
+    kwargs = p['eval'][p['noising_process']]
+
     eval = Eval.Eval(model, 
-            pdmp, 
+            noising_process, 
             data,
             dataset_files,
             verbose=True, 
             logger = logger,
             dataset = p['data']['dataset'], # for saving images
             hash_params = '_'.join([hash_parameters(p), hash_parameters_eval(p)]), # for saving images. We want a hash specific to the training, and to the sampling
-            reduce_timesteps = p['eval']['reduce_timesteps'],
+            #reduce_timesteps = p['eval']['reduce_timesteps'],
             data_to_generate = p['eval']['data_to_generate'],
             is_image = is_image_dataset(p['data']['dataset']),
             remove_existing_eval_files = False if p['eval']['data_to_generate'] == 0 else True,
-            clip_denoised = p['eval']['clip_denoised'])
+            #clip_denoised = p['eval']['clip_denoised'])
+            **kwargs
+    )
     return eval
 
 def init_manager_by_parameter(model, 
                               data,
-                              pdmp, 
+                              noising_process, 
                               optimizer,
                               learning_schedule,
                               eval, 
@@ -159,15 +188,18 @@ def init_manager_by_parameter(model,
     # training manager
     if logger is not None:
         logger.initialize(p)
+    
+    # here kwargs goes to manager (ema_rates), train_loop (grad_clip), and eventually to training_losses (monte_carlo...)
+    kwargs = p['training'][p['noising_process']]
     manager = Manager(model, 
                 data,
-                pdmp,
+                noising_process,
                 optimizer,
                 learning_schedule,
                 eval,
-                p['training']['ema_rates'],
                 logger,
-                grad_clip = p['training']['grad_clip'],
+                # ema_rate, grad_clip
+                **kwargs
                 )
     return manager
 
@@ -178,15 +210,15 @@ def prepare_experiment(p, logger = None, do_not_load_data=False):
         data, test_data, dataset_files, test_dataset_files = None, None, None, None
     else:
         data, test_data, dataset_files, test_dataset_files = init_data_by_parameter(p)
-    pdmp = init_pdmp_by_parameter(p)
+    noising_process = init_noising_process_by_parameter(p)
     optim = init_optimizer_by_parameter(model, p)
     learning_schedule = init_ls_by_parameter(optim, p)
     # run evaluation on train or test data
-    eval = init_eval_by_parameter(model, pdmp, data, dataset_files, logger, p)
+    eval = init_eval_by_parameter(model, noising_process, data, dataset_files, logger, p)
     # run training
     manager = init_manager_by_parameter(model, 
                                         data, 
-                                        pdmp, 
+                                        noising_process, 
                                         optim,
                                         learning_schedule,
                                         eval,
