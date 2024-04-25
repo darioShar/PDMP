@@ -680,13 +680,22 @@ class LevyDiffusion:
 
     def reverse_sampling(self, 
                          model, 
-                         shape, 
+                         shape,
+                         reverse_steps,
+                         time_spacing = None,
                          initial_data = None, 
                          clip_denoised=False, 
                          ddim=False, 
                          eta=1.0, 
                          print_progression=False, 
                          get_sample_history=False):
+        
+        # rescale noising with the number of provided reverse_steps
+        assert time_spacing is None, "Specific time spacing is not yet supported for diffusion reverse sampling"
+        default_diffusion_steps = self.diffusion_steps # store original number to restore.
+        default_time_spacing = self.time_spacing
+        self.rescale_noising(reverse_steps, time_spacing=time_spacing)
+
         if self.LIM:
             x = self.lim_sample(self.model, 
                                      shape = shape,
@@ -708,6 +717,8 @@ class LevyDiffusion:
                                         progress=print_progression,
                                         get_sample_history = get_sample_history,
                                         clip_denoised = clip_denoised)
+        # restore original diffusion steps
+        self.rescale_noising(default_diffusion_steps, default_time_spacing)
         return x
 
     def training_losses_fixed_a(self, 

@@ -45,18 +45,18 @@ if __name__ == '__main__':
         # change some parameters before the run.
         update_experiment_after_loading(exp, args)
         if not args.ema_eval:
-            exp.manager.evaluate()
+            exp.manager.evaluate(evaluate_emas=False)
         if not args.no_ema_eval:
-            exp.manager.evaluate_emas()
+            exp.manager.evaluate(evaluate_emas=True)
         # if is image, we would rather have a separate folder per evaluation, since we won't be looking
         # at multiple evaluations during a single run, and doing operation on such a time series.
-        if is_image_dataset(exp.p['data']['dataset']):
-            tmp = exp.save(files=['eval', 'param'], save_new_eval=True, curr_epoch=epoch)
-            print('Saved ', tmp)
-        else:
-            tmp = exp.save(files=['eval', 'param'], save_new_eval=False, curr_epoch=None)
-            print('Saved ', tmp)
-    
+        #if is_image_dataset(exp.p['data']['dataset']):
+        #    tmp = exp.save(files=['eval', 'param'], save_new_eval=True, curr_epoch=epoch)
+        #    print('Saved ', tmp)
+        #else:
+        tmp = exp.save(files=['eval', 'param'], save_new_eval=True, curr_epoch=epoch)
+        print('Saved ', tmp)
+
     # close everything
     exp.terminate()
 

@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import copy
 
 class EMAHelper(object):
     def __init__(self, 
@@ -8,6 +8,7 @@ class EMAHelper(object):
         self.mu = mu
         self.shadow = {}
         self.register(model)
+        self.model = copy.deepcopy(model) # keep a copy of the model
 
     # create copy of trainable parameters
     def register(self, module):
@@ -27,7 +28,7 @@ class EMAHelper(object):
                     1. - self.mu) * param.data.detach() + self.mu * self.shadow[name].data
 
     # copy ema parameters to model
-    def ema(self, module):
+    def _ema(self, module):
         if isinstance(module, nn.DataParallel):
             module = module.module
         for name, param in module.named_parameters():
@@ -36,7 +37,7 @@ class EMAHelper(object):
 
     # create a copy of the model with ema parameters
     # NYI: not our constructor
-    def ema_copy(self, module):
+    def _ema_copy(self, module):
         if isinstance(module, nn.DataParallel):
             inner_module = module.module
             module_copy = type(inner_module)(
@@ -49,6 +50,11 @@ class EMAHelper(object):
         # module_copy = copy.deepcopy(module)
         self.ema(module_copy)
         return module_copy
+    
+    # just return a usable ema model
+    def get_ema_model(self):
+        self._ema(self.model)
+        return self.model
 
     def state_dict(self):
         return self.shadow

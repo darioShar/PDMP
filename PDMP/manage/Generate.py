@@ -12,60 +12,42 @@ class GenerationManager:
     
     # same device as pdmp
     def __init__(self, 
-                 model, 
-                 noising_process, 
+                 noising_process,
                  dataloader,
-                 is_image
+                 is_image,
                  ):
-        self.model = model
+        self.noising_process = noising_process
         self.original_data = dataloader
+        self.is_image = is_image
         self.samples = []
         self.history = []
-        self.noising_process = noising_process
-        self.is_image = is_image
 
-    def generate(self, 
+    def generate(self,
+                 model,
                  nsamples,
-                 print_progression=True, 
+                 time_spacing = None,
                  use_samples = None,
-                reduce_timesteps = 1., # divide by reduce_timesteps
-                new_time_spacing = None,
                  get_sample_history = False,
-                 **kwargs):
+                 print_progression=True,
+                 **kwargs
+                 ):
+        
         _, (data, y) = next(enumerate(self.original_data))
         size = list(data.size())
         size[0] = nsamples 
-        #original_time_spacing = self.pdmp.time_spacing
-        # reduce the number of timesteps in the sampling process
-        if reduce_timesteps != 1.:
-            default_steps = self.noising_process.steps
-            default_time_spacing = self.noising_process.time_spacing
-            #self.pdmp.reverse_steps = default_reverse_steps // reduce_timesteps
-            self.noising_process.rescale_noising(int(default_steps / reduce_timesteps), new_time_spacing)
-
         x = self.noising_process.reverse_sampling(shape=size,
-                                                  model = self.model,
+                                                  model = model,
+                                                  time_spacing = time_spacing,
                                                   initial_data = use_samples,
                                                   print_progression = print_progression,
                                                   get_sample_history = get_sample_history,
                                                   **kwargs)
-        
-        #chain = self.pdmp.reverse_sampling(
-        #                nsamples=nsamples,
-        #                model=self.model,
-        #                initial_data = use_samples, # sample from Gaussian, else use this initial_data
-        #                print_progession = print_progression,
-        #                )
-
-        if reduce_timesteps != 1.:
-            self.noising_process.rescale_diffusion(default_steps, default_time_spacing)
-        
         # store samples and possibly history on cpu
         if get_sample_history:
             samples, hist = x
             self.history = [h.cpu() for h in hist]
             if self.is_image:
-                self.history = [inverse_affine_transform(h) for h in hist] # apply inverse transform                
+                self.history = torch.stack([inverse_affine_transform(h) for h in hist]) # apply inverse transform                
         else:
             samples = x[..., :2] # select positions in case of pdmp
             
@@ -74,15 +56,6 @@ class GenerationManager:
         self.samples = samples.cpu()
         if self.is_image:
             self.samples = inverse_affine_transform(self.samples)
-
-        # chain is [time, particle, channel, (position, speed)]
-        #self.samples = chain[-1, :, :, :2].cpu() # get positions
-        ## store history on cpu
-        #self.history = torch.stack([h.cpu() for h in chain])
-#
-        #if self.is_image:
-        #    self.samples = inverse_affine_transform(self.samples)
-        #    self.history = [inverse_affine_transform(h) for h in self.history]
 
 
 

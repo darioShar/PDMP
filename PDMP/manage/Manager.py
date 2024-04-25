@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import PDMP.compute.TrainLoop as TrainLoop
 import PDMP.models.Ema as Ema
 import copy
-#Wrapper around training functions
+
+#Wrapper around training and evaluation functions
 
 
 class Manager:
@@ -25,28 +26,26 @@ class Manager:
         self.noising_process = noising_process
         self.optimizer = optimizer
         self.learning_schedule = learning_schedule
+        self.eval = eval
         if ema_rates is None:
-            self.ema_models = None
-            self.ema_evals = None
+            self.ema_objects = None
         else:
-            self.ema_models = [Ema.EMAHelper(model, mu = mu) for mu in ema_rates]
+            #self.ema_models = [Ema.EMAHelper(model, mu = mu) for mu in ema_rates]
             logger = eval.logger
             # need to set logger to None for the deepcopy
             eval.logger = None
-            self.ema_evals = [(copy.deepcopy(eval), mu) for mu in ema_rates]
+            self.ema_objects = [{
+                'model': Ema.EMAHelper(model, mu = mu),
+                'eval': copy.deepcopy(eval),
+            } for mu in ema_rates]
+            #self.ema_evals = [(copy.deepcopy(eval), mu) for mu in ema_rates]
             eval.logger = logger 
-            for ema_eval, mu in self.ema_evals:
-                ema_eval.logger = logger
-        self.eval = eval
+            for ema_object in self.ema_objects:
+                ema_object['eval'].logger = logger
+        
         self.kwargs = kwargs
         self.logger = logger
-    
-    def __getitem__(self, key):
-        return self.eval.evals[key]
-    
-    def __setitem(self, key, value):
-        self.eval.evals[key] = value
-            
+     
     
     def train(self, **kwargs):
         tmp_kwargs = self.kwargs
@@ -68,43 +67,39 @@ class Manager:
             noising_process = self.noising_process,
             optimizer = self.optimizer,
             learning_schedule = self.learning_schedule,
-            ema_models=self.ema_models,
+            ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
             batch_callback = batch_callback,
             epoch_callback = epoch_callback,
             **tmp_kwargs)
-    
-    def evaluate(self, **kwargs):
-        self.model.eval()
-        with torch.inference_mode():
-            self.eval.evaluate_model(**kwargs)
-    
+
+
     def get_ema_model(self, mu):
-        for ema in self.ema_models:
-            if ema.mu == mu:
-                import copy
-                new_ema_model = copy.deepcopy(self.model)
-                ema.ema(new_ema_model)
-                return new_ema_model
+        for ema_obj in self.ema_objects:
+            if ema_obj['model'].mu == mu:
+                return ema_obj['model'].get_ema_model()
+                #import copy
+                #new_ema_model = copy.deepcopy(self.model)
+                #ema.ema(new_ema_model)
+                #return new_ema_model
         raise ValueError('No EMA model with mu = {}'.format(mu))
 
-    # do this on another eval object
-    def evaluate_emas(self, **kwargs):
-        # get a copy of the model
-        #tmp_model = copy.deepcopy(self.model)
-        # assign it to eval 
-        #self.eval.model = tmp_model
-        if self.ema_models is None:
-            return
-        for ema, (eval_ema, mu) in zip(self.ema_models, self.ema_evals):
-            ema.ema(eval_ema.model) # now model has ema parameters
-            eval_ema.model.eval()
+
+    def evaluate(self, evaluate_emas = False, **kwargs):
+        def ema_callback_on_logging(logger, key, value):
+            if not (key in ['losses', 'losses_batch']):
+                logger.log('_'.join(('ema', str(ema_obj['model'].mu), str(key))), value)
+        
+        if not evaluate_emas:
+            self.model.eval()
             with torch.inference_mode():
-                def callback_on_logging(logger, key, value):
-                    if not (key in ['losses', 'losses_batch']):
-                        logger.log('_'.join(('ema', str(mu), str(key))), value)
-                eval_ema.evaluate_model(callback_on_logging = callback_on_logging, **kwargs) 
-                # all other parameters are left unchanged
-            
+                self.eval.evaluate_model(self.model, **kwargs)
+        elif self.ema_objects is not None:
+            for ema_obj in self.ema_objects:
+                model = ema_obj['model'].get_ema_model()
+                model.eval()
+                with torch.inference_mode():
+                    ema_obj['eval'].evaluate_model(model, callback_on_logging = ema_callback_on_logging, **kwargs)
+
 
     def training_epochs(self):
         return self.train_loop.epochs
@@ -118,9 +113,9 @@ class Manager:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         if self.learning_schedule is not None:
             self.learning_schedule.load_state_dict(checkpoint['learning_schedule'])
-        if self.ema_models is not None:
-            for ema, ema_state in zip(self.ema_models, checkpoint['ema_models']):
-                ema.load_state_dict(ema_state)
+        if self.ema_objects is not None:
+            for ema_obj, ema_state in zip(self.ema_objects, checkpoint['ema_models']):
+                ema_obj['model'].load_state_dict(ema_state)
         self.train_loop.total_steps = checkpoint['steps']
         self.train_loop.epochs = checkpoint['epoch']
             
@@ -128,8 +123,8 @@ class Manager:
         checkpoint = {
             'model_parameters': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'ema_models': [ema.state_dict() for ema in self.ema_models] \
-                        if self.ema_models is not None else None,
+            'ema_models': [ema_obj['model'].state_dict() for ema_obj in self.ema_objects] \
+                        if self.ema_objects is not None else None,
             'epoch': self.train_loop.epochs,
             'steps': self.train_loop.total_steps,
             'learning_schedule': None if self.learning_schedule is None else self.learning_schedule.state_dict(),
@@ -138,29 +133,45 @@ class Manager:
     
     def save_eval_metrics(self, eval_path):
         eval_save = {'eval': self.eval.evals}
-        if self.ema_evals is not None:
-            eval_save.update({'ema_evals': [(ema_eval.evals, mu) for ema_eval, mu in self.ema_evals]})
+        if self.ema_objects is not None:
+            eval_save.update({'ema_evals': [(ema_obj['eval'].evals, ema_obj['model'].mu) for ema_obj in self.ema_objects]})
         torch.save(eval_save, eval_path)
     
     def load_eval_metrics(self, eval_path):
         eval_save = torch.load(eval_path)
-        if 'eval' in eval_save:
-            self.eval.evals = eval_save['eval']
-        else:
-            self.eval.evals = eval_save
+        assert 'eval' in eval_save, 'no eval subdict in eval file'
+        # load eval metrics
+        self.eval.evals = eval_save['eval']
         self.eval.log_existing_eval_values(folder='eval')
+
+        # load ema eval metrics
         if not 'ema_evals' in eval_save:
             return
-        assert self.ema_evals is not None
-        #assert len(self.ema_evals) == len(eval_save['ema_evals']) # no thats fine, just have the same mu at least
+        assert self.ema_objects is not None
+        # saved ema evaluation, in order
         saved_ema_evals = [ema_eval_save for ema_eval_save, mu_save in eval_save['ema_evals']]
+        # saved ema mu , in order
+        saved_mus = [mu_save for ema_eval_save, mu_save in eval_save['ema_evals']]
+        
+        for ema_obj in self.ema_objects:
+            # if mu has not been run previously, no loading
+            if ema_obj['mdoel'].mu not in saved_mus:
+                continue
+            # find index of our mu of interest
+            idx = saved_mus.index(mu)
+            # load the saved evaluation
+            ema_obj['eval'].evals = saved_ema_evals[idx]
+            # log the saved evaluation
+            ema_obj['eval'].log_existing_eval_values(folder='eval_ema_{}'.format(mu))
+
+        '''saved_ema_evals = [ema_eval_save for ema_eval_save, mu_save in eval_save['ema_evals']]
         saved_mus = [mu_save for ema_eval_save, mu_save in eval_save['ema_evals']]
         for ema_eval, mu in self.ema_evals:
             if mu not in saved_mus:
                 continue
             idx = saved_mus.index(mu)
             ema_eval.evals = saved_ema_evals[idx]
-            ema_eval.log_existing_eval_values(folder='eval_ema_{}'.format(mu))
+            ema_eval.log_existing_eval_values(folder='eval_ema_{}'.format(mu)) '''
         '''for (ema_eval, mu), (ema_eval_save, mu_save) in zip(self.ema_evals, eval_save['ema_evals']):
             assert mu == mu_save
             ema_eval.evals = ema_eval_save
@@ -169,7 +180,10 @@ class Manager:
     def __getitem__(self, key):
         import copy
         return copy.deepcopy(self.eval.evals[key])
-
+    
+    def __setitem(self, key, value):
+        self.eval.evals[key] = value
+    
     # also returns evals
     def display_evals(self,
                       key, 

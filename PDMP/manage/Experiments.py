@@ -1,8 +1,7 @@
 import numpy as np
 import torch
 import PDMP.evaluate.Eval as Eval
-import PDMP.manage.exp_utils.prepare_utils as prepare_utils
-import PDMP.manage.exp_utils.load_save_utils as load_save_utils
+import PDMP.manage.exp_utils as utils
 from PDMP.datasets import is_image_dataset
 from PDMP.manage.Generate import GenerationManager
 
@@ -49,7 +48,7 @@ class Experiment:
 
     @staticmethod
     def get_parameters_from_dir(dir):
-        return load_save_utils.load_params_from_folder(dir)
+        return utils.load_params_from_folder(dir)
     
     def print_parameters(self):
         print('Training with the following parameters:')
@@ -64,7 +63,7 @@ class Experiment:
 
     def _set_parameter(self, p):
         if isinstance(p, str): # config file
-            self.p = load_save_utils.load_param_from_config(CONFIG_PATH, p)
+            self.p = utils.load_param_from_config(CONFIG_PATH, p)
         elif isinstance(p, dict): # dictionnary
             self.p = p
         else:
@@ -109,20 +108,21 @@ class Experiment:
                 checkpoint_dir = None, 
                 logger = None):
         self._reset_attributes(p, checkpoint_dir, logger)
-        self.model, self.data, self.test_data, self.manager = prepare_utils.prepare_experiment(self.p, self.logger)
+        self.model, self.data, self.test_data, self.manager = utils.prepare_experiment(self.p, self.logger)
 
     def set_model(self, new_model):
+        assert False, 'need to reimplement'
         self.model = new_model
-        optim = prepare_utils.init_optimizer_by_parameter(self.model, self.p)
-        learning_schedule = prepare_utils.init_ls_by_parameter(optim, self.p)
+        optim = utils.init_optimizer_by_parameter(self.model, self.p)
+        learning_schedule = utils.init_ls_by_parameter(optim, self.p)
         # run it on test data
-        eval = prepare_utils.init_eval_by_parameter(self.model, 
+        eval = utils.init_eval_by_parameter(self.model, 
                                                                        self.manager.pdmp, 
                                                                        self.test_data, 
                                                                        self.logger, 
                                                                        self.p)
         # run it on training data
-        self.manager = prepare_utils.init_manager_by_parameter(
+        self.manager = utils.init_manager_by_parameter(
                                             self.model, 
                                             self.data, 
                                             self.manager.pdmp, 
@@ -143,7 +143,7 @@ class Experiment:
              load_eval_subdir = None): # to load from subdir of new evaluations
         self._reset_attributes(p, checkpoint_dir, logger)
         self.model, self.data, self.test_data, self.manager = \
-            load_save_utils.load_experiment_from_param(self.p, 
+            utils.load_experiment_from_param(self.p, 
                                        self.checkpoint_dir, 
                                        self.logger,
                                        curr_epoch=epoch,
@@ -156,7 +156,7 @@ class Experiment:
              curr_epoch = None,
              files='all',
              save_new_eval=False):
-        return load_save_utils.save_experiment(self.p, 
+        return utils.save_experiment(self.p, 
                                                self.checkpoint_dir, 
                                                self.manager, 
                                                curr_epoch,
@@ -212,11 +212,11 @@ class Experiment:
                 if verbose:
                     print('starting evaluation of the model:')
                 to_next_eval = eval_freq
-                self.manager.evaluate()
+                self.manager.evaluate(evaluate_emas=False)
                 if not no_ema_eval:
                     if verbose:
                         print('starting evaluation of the EMAs:')
-                    self.manager.evaluate_emas()
+                    self.manager.evaluate(evaluate_emas=True)
             else:
                 to_next_eval -= n_epochs
             epochs -= n_epochs
@@ -226,20 +226,6 @@ class Experiment:
             pbar.close()
             tqdm.tqdm._instances.clear()
 
-
-    def get_generator(self, ema = None):
-        if ema is None:
-            return GenerationManager(self.model, 
-                                self.manager.pdmp, 
-                                self.data,
-                                is_image=is_image_dataset(self.p['data']['dataset'])
-                                )
-        else:
-            return GenerationManager(self.manager.get_ema_model(ema), 
-                                self.manager.pdmp, 
-                                self.data,
-                                is_image=is_image_dataset(self.p['data']['dataset'])
-                                )
 
     def terminate(self):
         if self.logger:

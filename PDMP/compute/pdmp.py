@@ -309,6 +309,8 @@ class PDMP:
     def reverse_sampling(self,
                         shape,
                         model,
+                        reverse_steps,
+                        time_spacing = None,
                         initial_data = None, # sample from Gaussian, else use this initial_data
                         print_progression = False,
                         get_sample_history = False
@@ -320,9 +322,12 @@ class PDMP:
             'HMC': self.splitting_HMC_DRD,
             'BPS': self.splitting_BPS_RDBDR
         }
+        # for the moment, don;t do anything with time spacing
+        assert time_spacing is None, 'Specific time spacing is not yet implemented.'
+
         samples_or_chain = reverse_sample_func[self.sampler](model,
                                               self.T, 
-                                              self.reverse_steps, 
+                                              reverse_steps,
                                               shape = shape,
                                               print_progession=print_progression,
                                               get_sample_history = get_sample_history)
@@ -414,7 +419,12 @@ class PDMP:
         # output = model(X_V_t, t)
 
 
+
         t = t.unsqueeze(-1).unsqueeze(-1)
+
+        loss = - model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
+
+        '''add this for reflection loss'''
         # output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) 
         # temp = V_t * X_t
         # scal_prod = torch.sum(temp,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
@@ -426,11 +436,15 @@ class PDMP:
         # # compute the loss
         # def g(x):
         #     return (1 / (1+x))
+        # add this for reflection loss
         # loss = g(torch.exp(output-output_reflected))**2
-        # loss = g(torch.exp(output_reflected-output))**2 + g(output_reflected)**2
-        # loss -= 2*g(output) 
+        ##### loss = g(torch.exp(output_reflected-output))**2 + g(output_reflected)**2
+        ##### loss -= 2*g(output) 
         # t = t.unsqueeze(-1).unsqueeze(-1)
-        loss = - model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
+        
+        '''add this for refreshment loss'''
+        # can also add the loss for the refreshments, see equation (29).
+
         return loss
 
     def training_losses(self, model, X_t):

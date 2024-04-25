@@ -35,7 +35,7 @@ diffusion:
   alpha: 2.0
   clamp_a: null
   clamp_eps: null
-  diffusion_steps: 100
+  reverse_steps: 100 # here our diffusion models are trained with the uniforma distribution over [1, diffusion_steps] instead of [0, 1]: thus it is part of the training parameters
   LIM: false
   isotropic: true
   rescale_timesteps: true
@@ -46,18 +46,20 @@ diffusion:
 pdmp:
   sampler_name: BPS # ZigZag, BPS, HMC
   time_horizon: 10
-  reverse_steps: 200
   refresh_rate: 1.
 
 eval:
   data_to_generate: 5000
+  batch_size: 128
+  real_data: 10000 # in case of images, number of real images to store and to compare to
+
   pdmp:
-    reduce_timesteps: 1.
+    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
   diffusion:
-    reduce_timesteps: 1.
+    reverse_steps: 100
     clip_denoised: false
     ddim: false
     eta: 1.0

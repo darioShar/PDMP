@@ -1,7 +1,6 @@
 import argparse
 
-from PDMP.manage.exp_utils.prepare_utils import init_ls_by_parameter
-from PDMP.manage.exp_utils.file_utils import hash_parameters, hash_parameters_eval
+from PDMP.manage.exp_utils import init_ls_by_parameter, hash_parameters, hash_parameters_eval
 
 CONFIG_PATH = 'PDMP/configs'
 
@@ -25,9 +24,6 @@ def update_parameters_before_loading(p, args):
 
     if args.check is not None:
         p['run']['checkpoint_freq'] = args.check
-    
-    if args.reduce_timesteps is not None:
-        p['eval']['reduce_timesteps'] = args.reduce_timesteps
 
     if args.LIM:
         p['diffusion']['LIM'] = True
@@ -82,8 +78,8 @@ def update_parameters_before_loading(p, args):
     if args.lr_steps is not None:
         p['optim']['lr_steps'] = args.lr_steps
 
-
-
+    if args.reverse_steps is not None:
+        p['eval'][p['noising_process']]['reverse_steps'] = args.reverse_steps
 
     # Now for pdmp
     if args.sampler is not None:
@@ -91,9 +87,6 @@ def update_parameters_before_loading(p, args):
     
     if args.time_horizon is not None:
         p['pdmp']['time_horizon'] = args.time_horizon
-
-    if args.reverse_steps is not None:
-        p['pdmp']['reverse_steps'] = args.reverse_steps
     
     return p
 
@@ -153,7 +146,6 @@ def parse_args():
     parser.add_argument('--check', help='checkpoint frequency', default=None, type = int)
     parser.add_argument('--n_max_batch', help='max batch per epoch (speed up testing)', default=None, type = int)
     parser.add_argument('--no_ema_eval', help='dont evaluate ema models', action='store_true', default = False)
-    parser.add_argument('--reduce_timesteps', help='reduce timesteps (spacing)', default = None, type = float)
     parser.add_argument('--LIM', help='activate LIM training/sampling', action='store_true', default = False)
     parser.add_argument('--non_iso', help='use non isotropic noise in the diffusion', action='store_true', default = False)
     parser.add_argument('--non_iso_data', help='use non isotropic data', action='store_true', default = False)
@@ -166,11 +158,11 @@ def parse_args():
     parser.add_argument('--generate', help='how many images/datapoints to generate', default = None, type = int)
     parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
     parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
+    parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
 
     # now for pdmp
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)
     parser.add_argument('--time_horizon', help='choose time horizon for PDMP', default = None, type = int)
-    parser.add_argument('--reverse_steps', help='choose number of reverse_steps for PDMP', default = None, type = int)
 
 
     # specific to evaluation
