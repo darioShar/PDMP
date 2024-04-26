@@ -1,3 +1,13 @@
+.ipynb_checkpoints
 models/**
+.neptune/**
+**/__pycache__/**
+**/__pycache__
+__pycache__
+**__pycache__**
+data/**
 log/**
-**.ipynb_checkpoints**
+eval_files/**
+old/**
+scratch/**
+**.pyc
