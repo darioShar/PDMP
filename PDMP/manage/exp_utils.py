@@ -47,7 +47,7 @@ def hash_parameters(p):
 
 # this is an evaluation only hash
 def hash_parameters_eval(p):
-    to_hash = {'eval': p[p['noising_process']]}
+    to_hash = {'eval': p['eval'][p['noising_process']]}
     res = hashlib.sha256(str(to_hash).encode('utf-8')).hexdigest()
     res = str(res)[:8]
     #res = str(hex(abs(hash(tuple(p)))))[2:]
@@ -216,7 +216,7 @@ def _unet_model(p):
 def model_param_to_use(p):
     if p['noising_process'] == 'diffusion':
         return p['model']['mlp']
-    elif p['pdmp']['sampler_name'] == 'ZigZag':
+    elif p['pdmp']['sampler'] == 'ZigZag':
         return p['model']['mlp']
     else:
         return p['model']['normalizing_flow']
@@ -230,7 +230,7 @@ def init_model_by_parameter(p):
             model = Model.LevyDiffusionModel(nfeatures = p['data']['dim'],
                                              device=p['device'], 
                                              p_model_mlp=model_param)
-        elif p['pdmp']['sampler_name'] == 'ZigZag':
+        elif p['pdmp']['sampler'] == 'ZigZag':
             model = Model.LevyDiffusionModel(nfeatures = 2*p['data']['dim'], # takes X_t, V_t as input
                                              device=p['device'], 
                                              p_model_mlp=model_param)
@@ -242,7 +242,7 @@ def init_model_by_parameter(p):
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
         model = model.to(p['device'])
     else:
-        assert p['pdmp']['sampler_name'] == 'ZigZag', 'Normalizing flows/other methods not yet implemented for image data.'
+        assert p['pdmp']['sampler'] == 'ZigZag', 'Normalizing flows/other methods not yet implemented for image data.'
         model = _unet_model(p)
         model = model.to(p['device'])
     return model
@@ -269,7 +269,7 @@ def init_noising_process_by_parameter(p):
                         device = p['device'],
                         time_horizon = p['pdmp']['time_horizon'],
                         reverse_steps = p['eval']['pdmp']['reverse_steps'],
-                        sampler_name = p['pdmp']['sampler_name'],
+                        sampler = p['pdmp']['sampler'],
                         refresh_rate = p['pdmp']['refresh_rate'],
                         dim = p['data']['dim'],
                         )

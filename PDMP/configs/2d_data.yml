@@ -44,7 +44,7 @@ diffusion:
   loss_type: LP_EPS_LOSS
 
 pdmp:
-  sampler_name: BPS # ZigZag, BPS, HMC
+  sampler: BPS # ZigZag, BPS, HMC
   time_horizon: 10
   refresh_rate: 1.
 

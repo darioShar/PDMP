@@ -15,7 +15,7 @@ class PDMP:
                  time_horizon = 10, 
                  reverse_steps = 200, 
                  device = None, 
-                 sampler_name = 'ZigZag', 
+                 sampler = 'ZigZag', 
                  refresh_rate = 1.,
                  dim = 2,
                  time_spacing = None):
@@ -26,7 +26,7 @@ class PDMP:
         self.T = time_horizon
         self.reverse_steps = reverse_steps
         self.device = 'cpu' if device is None else device
-        self.sampler = sampler_name
+        self.sampler = sampler
         self.refreshment_rate = refresh_rate
         self.time_spacing = time_spacing
         # print(self.Q)
@@ -540,11 +540,20 @@ class PDMP:
         return -a/b + torch.sqrt((torch.maximum(torch.zeros(a.shape).to(self.device),a))**2/b**2 - 2 * torch.log(1-u)/b)
     
     def BPS_gauss_1event(self, x, v, time_horizons):
+        assert len(a.shape) == 3, 'nyi for more than nd data'
         a = v * x
+        a = torch.sum(a, dim = 2)
+        a = a.squeeze(-1)
+        b = v * v
+        b = torch.sum(b, dim=2).squeeze(-1)
+        Δt_reflections = self.switchingtime_gauss(a, b, torch.rand_like(a).to(self.device))
+        Δt_reflections = Δt_reflections.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+    
+        '''a = v * x
         a = torch.sum(a, dim = 2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
         b = v * v
         b = torch.sum(b, dim=2).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
-        Δt_reflections = self.switchingtime_gauss(a, b, torch.rand_like(a).to(self.device))
+        Δt_reflections = self.switchingtime_gauss(a, b, torch.rand_like(a).to(self.device))'''
         
         Δt_refresh = -torch.log(torch.rand((x.shape[0])).to(self.device)).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:]) / (self.refreshment_rate)
         x += v * torch.minimum(time_horizons,torch.minimum(Δt_reflections,Δt_refresh))
@@ -556,9 +565,6 @@ class PDMP:
         mask = torch.logical_and(time_horizons > torch.minimum(Δt_reflections,Δt_refresh), Δt_refresh<Δt_reflections)
         v[mask] = torch.randn_like(v[mask]).to(self.device)
         time_horizons -= torch.minimum(time_horizons,torch.minimum(Δt_reflections,Δt_refresh))
-
-
-
 
 
 

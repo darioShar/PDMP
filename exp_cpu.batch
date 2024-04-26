@@ -16,8 +16,6 @@ exp_number=$SLURM_ARRAY_TASK_ID
 
 echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
 
-
-
 set -x
 cd ${SLURM_SUBMIT_DIR}
 
@@ -37,25 +35,25 @@ conda activate diffusion
 
 samplers=('BPS' 'HMC' 'ZigZag')
 
-for i in $(seq 0 ${#samplers[@]}) ; do
+for i in $(seq 0 $((${#samplers[@]} - 1))) ; do
     echo "Submitting experiment ${exp_number}, pdmp with sampler=${samplers[${i}]}"
-    python ./run_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 50 --check 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]}
+    #python ./run_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 50 --check 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]}
 done
 
 echo "Submitting experiment ${exp_number}, diffusion"
-python ./run_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 50 --check 50 --reverse_steps 100 --noising_process diffusion
+#python ./run_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 50 --check 50 --reverse_steps 100 --noising_process diffusion
 
 # now evaluate last models with varying reverse_steps
 reverse_steps=(25 50 75 100 150 200 300 500)
-for i in $(seq 0 ${#reverse_steps[@]}) ; do
+for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
     echo "Evaluating experiment ${exp_number} with reverse_steps=${reverse_steps[${i}]}"
     # pdmp
-    for j in $(seq 0 ${#samplers[@]}) ; do
+    for j in $(seq 0 $(( ${#samplers[@]}-1)) ) ; do
         echo "pdmp with sampler=${samplers[${j}]} "
-        python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 300 --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ${samplers[${i}]}
+        python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 300 --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ${samplers[${j}]}
     done
     # diffusion
-    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 300 --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp 
+    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs 300 --eval 300 --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion 
 done
 
 
