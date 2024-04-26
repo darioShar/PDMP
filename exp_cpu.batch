@@ -57,4 +57,4 @@ for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
 done
 
 
-#python ./run_pdmp.py --config 2d_data --name tmp --epochs 10 --eval 5 --check 5 --reverse_steps 100 --noising_process pdmp --sampler HMC
+python ./run_pdmp.py --config mnist --name tmp --epochs 10 --eval 5 --check 5 --reverse_steps 1000 --noising_process diffusion

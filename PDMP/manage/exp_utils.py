@@ -181,7 +181,7 @@ def prepare_data_directories(dataset_name, dataset_files, remove_existing_eval_f
 ''''''''''' PREPARE FROM PARAMETER DICT '''''''''''
 
 # for the moment, only unconditional models
-def _unet_model(p):
+def _unet_model(p, p_model_unet):
     image_size = p['data']['image_size']
     # the usual channel multiplier. Can choose otherwise in config files.
     '''if image_size == 256:
@@ -194,20 +194,20 @@ def _unet_model(p):
         raise ValueError(f"unsupported image size: {image_size}")
     '''
 
-    learn_gamma = p['model']['compute_gamma']
+    learn_gamma = p_model_unet['compute_gamma']
     channels = p['data']['channels']
     model = unet.UNetModel(
             in_channels=channels,
-            model_channels=p['model']['model_channels'],
+            model_channels=p_model_unet['model_channels'],
             out_channels= (channels if not learn_gamma else 2*channels),
-            num_res_blocks=p['model']['num_res_blocks'],
-            attention_resolutions=p['model']['attn_resolutions'],# tuple([2, 4]), # adds attention at image_size / 2 and /4
-            dropout= p['model']['dropout'],
-            channel_mult= p['model']['channel_mult'], # divides image_size by two at each new item, except first one. [i] * model_channels
+            num_res_blocks=p_model_unet['num_res_blocks'],
+            attention_resolutions=p_model_unet['attn_resolutions'],# tuple([2, 4]), # adds attention at image_size / 2 and /4
+            dropout= p_model_unet['dropout'],
+            channel_mult= p_model_unet['channel_mult'], # divides image_size by two at each new item, except first one. [i] * model_channels
             dims = 2,
             num_classes= None,#(NUM_CLASSES if class_cond else None),
             use_checkpoint=False,
-            num_heads=p['model']['num_heads'],
+            num_heads=p_model_unet['num_heads'],
             num_heads_upsample=-1, # same as num_heads
             use_scale_shift_norm=True,
         )
@@ -215,7 +215,10 @@ def _unet_model(p):
 
 def model_param_to_use(p):
     if p['noising_process'] == 'diffusion':
-        return p['model']['mlp']
+        if is_image_dataset(p['data']['dataset']):
+            return p['model']['unet']
+        else:
+            return p['model']['mlp']
     elif p['pdmp']['sampler'] == 'ZigZag':
         return p['model']['mlp']
     else:
@@ -242,9 +245,16 @@ def init_model_by_parameter(p):
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
         model = model.to(p['device'])
     else:
-        assert p['pdmp']['sampler'] == 'ZigZag', 'Normalizing flows/other methods not yet implemented for image data.'
-        model = _unet_model(p)
-        model = model.to(p['device'])
+        if (p['noising_process'] == 'diffusion') or (p['pdmp']['sampler'] == 'ZigZag'):
+            model = _unet_model(p, p_model_unet = model_param)
+            model = model.to(p['device'])
+        else:
+            assert False, 'Normalizing flows not yet implemented for image data.'
+            # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
+            model = zuko.flows.NSF(p['data']['dim'], # generates V_t
+                                   p['data']['dim'] + 1,  # takes X_t, t as conditioning
+                                   transforms=model_param['transforms'], #3, 
+                                   hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     return model
 
 
