@@ -540,7 +540,7 @@ class PDMP:
         return -a/b + torch.sqrt((torch.maximum(torch.zeros(a.shape).to(self.device),a))**2/b**2 - 2 * torch.log(1-u)/b)
     
     def BPS_gauss_1event(self, x, v, time_horizons):
-        assert len(a.shape) == 3, 'nyi for more than nd data'
+        assert len(x.shape) == 3, 'nyi for more than nd data'
         a = v * x
         a = torch.sum(a, dim = 2)
         a = a.squeeze(-1)

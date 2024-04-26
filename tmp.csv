@@ -1,0 +1,353 @@
+,seed,data,noising_process,diffusion,pdmp,eval,model,training,optim,run,device
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 500},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 300},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 150},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 200},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 75},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 50},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 25},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu
+between_minus_1_1,,True,pdmp,,,,,,,,cpu
+quantile_cutoff,,0.98,pdmp,,,,,,,,cpu
+data_alpha,,2.0,pdmp,,,,,,,,cpu
+dataset,,gmm_grid,pdmp,,,,,,,,cpu
+isotropic,,True,pdmp,True,,,,,,,cpu
+n_mixture,,4,pdmp,,,,,,,,cpu
+dim,,2,pdmp,,,,,,,,cpu
+normalized,,True,pdmp,,,,,,,,cpu
+nsamples,,10000,pdmp,,,,,,,,cpu
+bs,,512,pdmp,,,,,,,,cpu
+num_workers,,0,pdmp,,,,,,,,cpu
+std,,0.05,pdmp,,,,,,,,cpu
+theta,,1.0,pdmp,,,,,,,,cpu
+weights,,"[0.1, 0.4, 0.4, 0.1]",pdmp,,,,,,,,cpu
+alpha,,,pdmp,2.0,,,,,,,cpu
+clamp_a,,,pdmp,,,,,,,,cpu
+clamp_eps,,,pdmp,,,,,,,,cpu
+reverse_steps,,,pdmp,100,,,,,,,cpu
+LIM,,,pdmp,False,,,,,,,cpu
+rescale_timesteps,,,pdmp,True,,,,,,,cpu
+mean_predict,,,pdmp,EPSILON,,,,,,,cpu
+var_predict,,,pdmp,FIXED,,,,,,,cpu
+loss_type,,,pdmp,LP_EPS_LOSS,,,,,,,cpu
+sampler,,,pdmp,,HMC,,,,,,cpu
+time_horizon,,,pdmp,,10,,,,,,cpu
+refresh_rate,,,pdmp,,1.0,,,,,,cpu
+data_to_generate,,,pdmp,,,5000,,,,,cpu
+batch_size,,,pdmp,,,128,,,,,cpu
+real_data,,,pdmp,,,10000,,,,,cpu
+pdmp,,,pdmp,,,{'reverse_steps': 100},,"{'ema_rates': None, 'grad_clip': None}",,,cpu
+diffusion,,,pdmp,,,"{'reverse_steps': 100, 'clip_denoised': False, 'ddim': False, 'eta': 1.0}",,"{'ema_rates': None, 'grad_clip': None, 'loss_monte_carlo': 'mean', 'lploss': 2.0, 'monte_carlo_steps': 1, 'monte_carlo_groups': 1}",,,cpu
+mlp,,,pdmp,,,,"{'a_emb_size': 32, 'a_pos_emb': False, 'act': 'silu', 'compute_gamma': False, 'dropout_rate': 0.0, 'group_norm': True, 'nblocks': 2, 'no_a': True, 'nunits': 64, 'skip_connection': True, 'time_emb_size': 8, 'time_emb_type': 'learnable', 'use_a_t': False}",,,,cpu
+normalizing_flow,,,pdmp,,,,"{'transforms': 3, 'hidden_width': 128, 'hidden_depth': 3}",,,,cpu
+optimizer,,,pdmp,,,,,,adamw,,cpu
+schedule,,,pdmp,,,,,,,,cpu
+lr,,,pdmp,,,,,,0.005,,cpu
+warmup,,,pdmp,,,,,,0,,cpu
+lr_steps,,,pdmp,,,,,,300000,,cpu
+lr_step_size,,,pdmp,,,,,,400,,cpu
+lr_gamma,,,pdmp,,,,,,0.99,,cpu
+epochs,,,pdmp,,,,,,,300,cpu
+eval_freq,,,pdmp,,,,,,,300,cpu
+checkpoint_freq,,,pdmp,,,,,,,25,cpu
+progress,,,pdmp,,,,,,,True,cpu

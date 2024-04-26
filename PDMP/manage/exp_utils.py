@@ -437,7 +437,9 @@ def _load_experiment(p,
                      do_not_load_data = False):
     model, data, test_data, manager = prepare_experiment(p, logger, do_not_load_data)
     if not do_not_load_model:
+        print('loading from model file {}'.format(model_path))
         manager.load(model_path)
+    print('loading from eval file {}'.format(eval_path))
     manager.load_eval_metrics(eval_path)
     #manager.losses = torch.load(eval_path)
     return model, data, test_data, manager
