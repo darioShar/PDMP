@@ -318,7 +318,7 @@ class PDMP:
                 speed = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*data.shape[0],))]
                 speed = speed.reshape(data.shape[0], 1, 2)
             elif self.sampler == 'HMC':
-                speed = torch.randn_like(data).to(self.device)
+                speed = torch.randn_like(data)
             elif self.sampler == 'BPS':
                 speed = torch.randn(data.shape)
         

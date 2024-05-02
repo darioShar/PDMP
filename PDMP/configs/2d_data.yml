@@ -1,34 +1,33 @@
 seed: null
 
 data:
-  between_minus_1_1: false
+  between_minus_1_1: true
   quantile_cutoff: 0.99999
   data_alpha: 2.0
   dataset: gmm_grid #gmm_grid # sas_grid
   isotropic: true
-  n_mixture: 2 # must be square. set to None if not a grid mixture
+  n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
-  normalized: false #true
+  normalized: true #true
   nsamples: 32000
   bs: 4000 # batch size
   num_workers: 0 # number of workers for data loading
-  std: 0.2
+  std: 0.05
   theta: 1.
   weights:
-  - 0.1
-  - 0.4
-  - 0.4
-  - 0.1
-
-  #- 0.01
   #- 0.1
-  #- 0.3
-  #- 0.2
-  #- 0.02
-  #- 0.15
-  #- 0.02
-  #- 0.15
-  #- 0.05
+  #- 0.4
+  #- 0.4
+  #- 0.1
+  - 0.01
+  - 0.1
+  - 0.3
+  - 0.2
+  - 0.02
+  - 0.15
+  - 0.02
+  - 0.15
+  - 0.05
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -45,17 +44,17 @@ diffusion:
   loss_type: LP_EPS_LOSS
 
 pdmp:
-  sampler: ZigZag # ZigZag, BPS, HMC
+  sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 10
-  refresh_rate: 0.
+  refresh_rate: 1.
 
 eval:
-  data_to_generate: 5000
+  data_to_generate: 15000
   batch_size: 128
   real_data: 10000 # in case of images, number of real images to store and to compare to
 
   pdmp:
-    reverse_steps: 150 # reverse_steps are only part of evaluation, not of the training
+    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
     get_sample_history: true
     #clip_denoised: false
     #new_time_spacing
@@ -87,7 +86,7 @@ model:
   normalizing_flow:
     transforms: 3
     hidden_width: 128
-    hidden_depth: 6
+    hidden_depth: 9
 
 training:
   pdmp:

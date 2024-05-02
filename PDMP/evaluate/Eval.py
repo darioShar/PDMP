@@ -96,7 +96,7 @@ class Eval:
                         model, 
                         data_to_generate,
                         batch_size,
-                        fig_lim = 3,
+                        fig_lim = 1.5,
                         callback_on_logging = None,
                         **kwargs):
         

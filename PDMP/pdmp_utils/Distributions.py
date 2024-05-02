@@ -130,7 +130,7 @@ def sample_2_gmm(n_samples,
     # don't forget to shuffle rows, otherwise sorted by mixture
     x = torch.tensor(x, dtype = torch.float32)
     if between_minus_1_1:
-        x = _between_minus_1_1_with_quantile(x, quantile_cutoff, scale_to_minus_1_1=False) # should do something with 1 / sqrt(n)
+        x = _between_minus_1_1_with_quantile(x, quantile_cutoff, scale_to_minus_1_1=True) # should do something with 1 / sqrt(n)
     return x[torch.randperm(x.size()[0])]
 
 def sample_grid_gmm(n_samples, 

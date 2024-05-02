@@ -92,7 +92,7 @@ def get_dataset(p):
         assert config.data.dim <= 2, 'Only supports at most N-D data with N <= 2 for the moment. Please change Data.generator and Data.Distributions objects.'
 
         data_gen = Data.Generator(config.data.dataset.lower(), 
-                                    n = int(np.sqrt(config.data.n_mixture)), 
+                                    n = int(np.sqrt(config.data.n_mixture)) if config.data.dataset.split('_')[-1] == 'grid' else config.data.n_mixture, 
                                     std = config.data.std, 
                                     normalize = config.data.normalized,
                                     weights = config.data.weights,

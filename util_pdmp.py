@@ -87,6 +87,10 @@ def update_parameters_before_loading(p, args):
     
     if args.time_horizon is not None:
         p['pdmp']['time_horizon'] = args.time_horizon
+
+    if args.refresh_rate is not None:
+        assert args.refresh_rate >= 0.
+        p['pdmp']['refresh_rate'] = args.refresh_rate
     
     return p
 
@@ -159,6 +163,7 @@ def parse_args():
     parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
     parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
+    parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
 
     # now for pdmp
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)

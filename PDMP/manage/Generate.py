@@ -90,7 +90,7 @@ class GenerationManager:
     
     def get_plot(self, 
                  plot_original_data = True, 
-                 limit_nb_orig_data = 5000,
+                 limit_nb_orig_data = 1000,
                 xlim = None, ylim = None,
                 title= None):
         
@@ -101,7 +101,7 @@ class GenerationManager:
         fig = plt.figure()
         if plot_original_data:
             self._plot_data(original_data, limit_nb_orig_data)
-        self._plot_data(gen_data, marker='+')
+        self._plot_data(gen_data[:limit_nb_orig_data], marker='+')
         if xlim is not None:
             plt.xlim(xlim) 
         if ylim is not None:
