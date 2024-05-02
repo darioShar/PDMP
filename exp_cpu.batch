@@ -10,7 +10,7 @@
 ### ## SBATCH --mem=48G                # Total memory allocated
 # ### ### SBATCH --hint=multithread       # we get physical cores not logical
 #SBATCH --output=./log/%x_%j.out   # output file name
-#SBATCH --array=0-9              # job array index
+#SBATCH --array=0-39              # job array index
 
 exp_number=$SLURM_ARRAY_TASK_ID
 
