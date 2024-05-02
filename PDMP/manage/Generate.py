@@ -90,7 +90,7 @@ class GenerationManager:
     
     def get_plot(self, 
                  plot_original_data = True, 
-                 limit_nb_orig_data = 1000,
+                 limit_nb_orig_data = 2000,
                 xlim = None, ylim = None,
                 title= None):
         
