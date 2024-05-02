@@ -80,7 +80,7 @@ def gen_sas(alpha,
         return torch.sqrt(a)* ret'''
 
 
-def _between_minus_1_1_with_quantile(x, quantile):
+def _between_minus_1_1_with_quantile(x, quantile, scale_to_minus_1_1 = True):
     # assume x is centred
     high_quantile = torch.quantile(x, quantile, dim = 0, interpolation='nearest')
     low_quantile = torch.quantile(x, 1 - quantile, dim = 0, interpolation='nearest')
@@ -93,8 +93,15 @@ def _between_minus_1_1_with_quantile(x, quantile):
     idx_low = (tmp <= - clamp_value)
     tmp[idx_high] = clamp_value[idx_high]
     tmp[idx_low] = -clamp_value[idx_low]
-    tmp /= clamp_value
+    if scale_to_minus_1_1:
+        tmp /= clamp_value
+    else:
+        # just clamp
+        tmp = tmp.clamp(-1, 1)
+        #tmp = tmp
     return tmp
+
+
 
 
 ''' They must have the same signature'''
@@ -123,7 +130,7 @@ def sample_2_gmm(n_samples,
     # don't forget to shuffle rows, otherwise sorted by mixture
     x = torch.tensor(x, dtype = torch.float32)
     if between_minus_1_1:
-        x = _between_minus_1_1_with_quantile(x, quantile_cutoff) # should do something with 1 / sqrt(n)
+        x = _between_minus_1_1_with_quantile(x, quantile_cutoff, scale_to_minus_1_1=False) # should do something with 1 / sqrt(n)
     return x[torch.randperm(x.size()[0])]
 
 def sample_grid_gmm(n_samples, 

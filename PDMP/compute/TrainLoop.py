@@ -41,8 +41,9 @@ class TrainLoop:
                 if max_batch_per_epoch is not None:
                     if i >= max_batch_per_epoch:
                         break
-                
+
                 loss = noising_process.training_losses(model, Xbatch, **kwargs)
+
                 #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
                 #loss = loss.mean()
                 #print('loss computed')

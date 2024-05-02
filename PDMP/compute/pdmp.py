@@ -13,7 +13,7 @@ class PDMP:
     
     def __init__(self, 
                  time_horizon = 10, 
-                 reverse_steps = 200, 
+                 reverse_steps = 200,
                  device = None, 
                  sampler = 'ZigZag', 
                  refresh_rate = 1.,
@@ -42,7 +42,16 @@ class PDMP:
         event_time = torch.distributions.exponential.Exponential(lambdas)
         v[event_time.sample() <= s] *= -1.
 
-    def splitting_zzs_DBD(self, model, T, N, shape = None, x_init=None, v_init=None, print_progession = False, get_sample_history = False):
+    def splitting_zzs_DBD(self, 
+                          model, 
+                          T, 
+                          N, 
+                          shape = None, 
+                          x_init=None, 
+                          v_init=None, 
+                          print_progession = False, 
+                          get_sample_history = False):
+        #print('ZigZag generation, T = {}, N = {}'.format(T, N))
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
@@ -71,7 +80,7 @@ class PDMP:
                 x -= v * delta / 2 # x - v * δ / 2
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
-                                    (torch.ones(x.shape[0])*time_mid).to(self.device))[:, :, :2]
+                                    (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :2]
                 #print(density_ratio.mean(dim=0))
                 switch_rate = density_ratio.cpu()* torch.maximum(torch.zeros(x.shape), -v * x)
                 self.flip_given_rate(v, switch_rate, delta)
@@ -80,7 +89,8 @@ class PDMP:
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
-            return chain[-1], torch.stack(chain)
+            print(chain[-1].shape)
+            return torch.stack(chain)
         return torch.concat((x, v), dim = -1)
     
     def refresh_given_rate(self, x, v, t, lambdas, s, model):
@@ -151,7 +161,7 @@ class PDMP:
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
-            return chain[-1], torch.stack(chain)
+            return torch.stack(chain)
         return torch.concat((x, v), dim = -1)
 
     def reflect_given_rate(lambdas, v, v_reflect, s):
@@ -272,8 +282,31 @@ class PDMP:
         
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
-            return chain[-1], torch.stack(chain)
+            return torch.stack(chain)
         return torch.concat((x, v), dim = -1)
+    
+    def forward_old(self, data, t, speed = None):
+        #new_data = data.clone()
+        #time_horizons = t.clone().detach()
+        
+        if self.sampler == 'ZigZag':
+            if speed is None:
+                speed = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*data.shape[0],))]
+                speed = speed.reshape(data.shape[0], 1, 2)
+            while (t > 0.).any():
+                self.ZigZag_gauss_1event_old(data, speed, t)
+        elif self.sampler == 'HMC':
+            if speed is None:
+                speed = torch.randn_like(data).to(self.device)
+            while (t > 1e-9).any():
+                self.HMC_gauss_1event(data, speed, t)
+                #speed = torch.randn_like(data)
+                speed[t > 0] = torch.randn_like(speed[t > 0])
+        elif self.sampler == 'BPS':
+            if speed is None:
+                speed = torch.randn(data.shape)
+            while (t > 1e-9).any():
+                self.BPS_gauss_1event(data, speed, t)
     
     def forward(self, data, t, speed = None):
         #new_data = data.clone()
@@ -307,13 +340,13 @@ class PDMP:
         return data, speed
     
     def reverse_sampling(self,
-                        shape,
                         model,
-                        reverse_steps,
+                        reverse_steps=None,
+                        shape = None,
                         time_spacing = None,
                         initial_data = None, # sample from Gaussian, else use this initial_data
                         print_progression = False,
-                        get_sample_history = False
+                        get_sample_history = False,
                         ):
         assert initial_data is None, 'Using specified initial data is not yet implemented.'
         
@@ -369,6 +402,7 @@ class PDMP:
         # run the model
         output = model(X_V_t, t)
 
+        assert X_t.shape[-1] == 2, 'only dimension 2 is implemened'
         # invert time on component 1 and 2
         X_V_inv_t_0 = X_V_t.detach().clone() # clone to avoid modifying the original tensor, detach to avoid computing gradients on original tensor
         X_V_inv_t_1 = X_V_t.detach().clone()
@@ -446,37 +480,44 @@ class PDMP:
         # can also add the loss for the refreshments, see equation (29).
 
         return loss
+    
 
-    def training_losses(self, model, X_t):
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None):
                 # generate random speed
-        #if self.sampler == 'ZigZag':
-        #    Vbatch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*X_t.shape[0],))]
-        #    Vbatch = Vbatch.reshape(X_t.shape[0], 1, 2)
-        #elif self.sampler == 'HMC':
-        #    Vbatch = torch.randn_like(X_t)
-        #elif self.sampler == 'BPS':
-        #    Vbatch = torch.randn_like(X_t)
-        
+        if V_batch is None:
+            if self.sampler == 'ZigZag':
+                V_batch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*X_batch.shape[0],))]
+                V_batch = V_batch.reshape(X_batch.shape[0], 1, 2)
+            elif self.sampler == 'HMC':
+                V_batch = torch.randn_like(X_batch)
+            elif self.sampler == 'BPS':
+                V_batch = torch.randn_like(X_batch)
+#
         # generate random time horizons
-        time_horizons = self.T * (torch.rand(X_t.shape[0])**2)
+        if time_horizons is None:
+            time_horizons = self.T * (torch.rand(X_batch.shape[0])**2)
 
         # must be of the same shape as Xbatch for the pdmp forward process, since it will be applied component wise
         t = time_horizons.clone().detach().unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 2)
         
         # clone our initial data, since it will be modified by forward process
-        x = X_t.clone()
+        x = X_batch.clone()
         #v = Vbatch.clone()
         
         # actually faster to switch to cpu for forward process in the case of pdmps
         device = self.device
         self.device = 'cpu'
         # put everyhting on the device
-        X_t = X_t.to(self.device)
+        X_batch = X_batch.to(self.device)
         t = t.to(self.device)
+        #print('t', t[0])
 
         # apply the forward process. Everything runs on the cpu.
-        X_t, V_t = self.forward(X_t, t)
+        #self.forward_old(X_batch, t, speed = V_batch)
+        X_t, V_t = self.forward(X_batch, t, speed = V_batch)
         
+        #print('x', x[0])
+        #print('X_t', X_t[0])
         # put back on the device
         self.device = device
 
@@ -486,16 +527,16 @@ class PDMP:
         #idx = (v == Vbatch)
         #print(idx, v[idx], Vbatch[idx])
         #assert ((x == X_t).logical_not()).any() and ((v == Vbatch).logical_not()).any()
-        assert ((x == X_t).logical_not()).any()
+        #assert not ((x == X_t)).any()
         # check that the time horizon has been reached for all data
         assert not (t != 0.).any()
 
         if self.sampler == 'ZigZag':
-            losses = self.training_losses_zigzag(model, X_t, V_t, time_horizons)
+            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons)
         elif self.sampler == 'HMC':
-            losses = self.training_loss_hmc(model, X_t, V_t, time_horizons)
+            losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons)
         elif self.sampler =='BPS':
-            losses = self.training_loss_bps(model, X_t, V_t, time_horizons)
+            losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons)
         
         return losses.mean()
     
@@ -503,8 +544,24 @@ class PDMP:
     # generate switching time for rate of the form max(0, a + b s)
         return -a/b + torch.sqrt((torch.maximum(torch.zeros(a.shape),a))**2/b**2 - 2 * torch.log(1-u)/b)
 
-    def ZigZag_gauss_1event(self, x, v, time_horizons):
+    def ZigZag_gauss_1event_old(self, x, v, time_horizons):
 
+        a = v * x
+        b = v * v
+
+        Δt_switches = self.switchingtime_gauss(a, b, torch.rand_like(a))
+        if self.refreshment_rate == 0.0:
+            # Δt_excess = torch.inf
+            x += v * torch.minimum(time_horizons,Δt_switches)
+            v[time_horizons>Δt_switches] *= -1
+            time_horizons -= torch.minimum(time_horizons,Δt_switches)
+        else:
+            Δt_excess = -torch.log(torch.rand_like(a)) / (self.refreshment_rate)
+            x += v * torch.minimum(time_horizons,torch.minimum(Δt_switches,Δt_excess))
+            v[time_horizons > torch.minimum(Δt_switches,Δt_excess)] *= -1
+            time_horizons -= torch.minimum(time_horizons,torch.minimum(Δt_switches,Δt_excess))
+
+    def ZigZag_gauss_1event(self, x, v, time_horizons):
         a = v * x
         b = v * v
 

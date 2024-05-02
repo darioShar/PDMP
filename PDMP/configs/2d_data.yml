@@ -1,24 +1,25 @@
 seed: null
 
 data:
-  between_minus_1_1: true
-  quantile_cutoff: 0.98
+  between_minus_1_1: false
+  quantile_cutoff: 0.99999
   data_alpha: 2.0
   dataset: gmm_grid #gmm_grid # sas_grid
   isotropic: true
-  n_mixture: 4 # must be square. set to None if not a grid mixture
+  n_mixture: 2 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
-  normalized: true
-  nsamples: 10000
-  bs: 512 # batch size
+  normalized: false #true
+  nsamples: 32000
+  bs: 4000 # batch size
   num_workers: 0 # number of workers for data loading
-  std: 0.05
-  theta: 1.0
+  std: 0.2
+  theta: 1.
   weights:
   - 0.1
   - 0.4
   - 0.4
   - 0.1
+
   #- 0.01
   #- 0.1
   #- 0.3
@@ -44,9 +45,9 @@ diffusion:
   loss_type: LP_EPS_LOSS
 
 pdmp:
-  sampler: BPS # ZigZag, BPS, HMC
+  sampler: ZigZag # ZigZag, BPS, HMC
   time_horizon: 10
-  refresh_rate: 1.
+  refresh_rate: 0.
 
 eval:
   data_to_generate: 5000
@@ -54,7 +55,8 @@ eval:
   real_data: 10000 # in case of images, number of real images to store and to compare to
 
   pdmp:
-    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
+    reverse_steps: 150 # reverse_steps are only part of evaluation, not of the training
+    get_sample_history: true
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
@@ -74,7 +76,7 @@ model:
     compute_gamma: false
     dropout_rate: 0.0
     group_norm: true
-    nblocks: 2
+    nblocks: 32
     no_a: true
     nunits: 64
     skip_connection: true
@@ -85,7 +87,7 @@ model:
   normalizing_flow:
     transforms: 3
     hidden_width: 128
-    hidden_depth: 3
+    hidden_depth: 6
 
 training:
   pdmp:
@@ -104,14 +106,14 @@ training:
 optim:
   optimizer: adamw
   schedule: null #steplr, linear
-  lr: 0.005
+  lr: 0.0005
   warmup: 0 #1000
   lr_steps: 300000
   lr_step_size: 400
   lr_gamma: 0.99
 
 run:
-  epochs: 50
-  eval_freq: 25
-  checkpoint_freq: 25
+  epochs: 10
+  eval_freq: 10
+  checkpoint_freq: null
   progress: true # print progress bar

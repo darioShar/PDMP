@@ -172,6 +172,7 @@ class Experiment:
             no_ema_eval = False,
             **kwargs): # bs, lr, eval_freq, Lploss...
         
+        total_epochs = self.p['run']['epochs']
         epochs = self.p['run']['epochs']
         eval_freq = self.p['run']['eval_freq']
         checkpoint_freq = self.p['run']['checkpoint_freq']
@@ -213,6 +214,10 @@ class Experiment:
                     print('starting evaluation of the model:')
                 to_next_eval = eval_freq
                 self.manager.evaluate(evaluate_emas=False)
+                # save generation
+                #if not self.manager.eval.is_image:
+                    #print('saving at epoch number {}'.format(total_epochs - epochs + n_epochs))
+                    #self.manager.eval.gen_manager.animation(generated_data_name = '{}_{}_{}'.format(self.p['pdmp']['sampler'], self.p['data']['dataset'], total_epochs - epochs + n_epochs))
                 if not no_ema_eval:
                     if verbose:
                         print('starting evaluation of the EMAs:')

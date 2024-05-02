@@ -41,7 +41,7 @@ class LevyDiffusionModel(nn.Module):
         'one_dimensional_input'
     ]
 
-    def __init__(self, nfeatures, device, p_model_mlp):
+    def __init__(self, nfeatures, device, p_model_mlp, noising_process):
         super(LevyDiffusionModel, self).__init__()
 
         # extract from param dict
@@ -59,10 +59,11 @@ class LevyDiffusionModel(nn.Module):
         self.dropout_rate =     p_model_mlp['dropout_rate']
         self.compute_gamma =    p_model_mlp['compute_gamma']
         self.device =           device
+        self.noising_process =  noising_process
         # to be computed later depending on chosen architecture
         self.additional_dim =   0 
 
-
+        assert noising_process in ['diffusion', 'ZigZag'], 'only supports MLP for ZigZag and diffusion'
         assert self.time_emb_type in self.possible_time_embeddings
         
         # for dropout and group norm.
@@ -108,8 +109,8 @@ class LevyDiffusionModel(nn.Module):
                                           self.act)
         
         # possible exp block, at the end
-        
-        self.linear_in =  nn.Linear(self.nfeatures + self.additional_dim, self.nunits)
+        in_features = self.nfeatures if self.noising_process == 'diffusion' else 2*self.nfeatures
+        self.linear_in =  nn.Linear(in_features + self.additional_dim, self.nunits)
         
         self.inblock = nn.Sequential(self.linear_in,
                                      self.group_norm_in, 
@@ -232,6 +233,9 @@ class LevyDiffusionModel(nn.Module):
             #    val_2 = val_2.expand(*val_2.shape[:-1], val_1.shape[-1])
             return torch.concat([val_1, val_2], dim = 1) # concat on channels dim
         else:
+            if self.noising_process == 'ZigZag':
+                # aply this function for positive output and better behaviour around 1.
+                val_1 = torch.log(1 + torch.exp(val_1)) / np.log(2) # so that's it 1 at val_1=0
             return val_1
             
         # duplicate last

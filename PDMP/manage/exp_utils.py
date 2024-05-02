@@ -227,16 +227,14 @@ def model_param_to_use(p):
 def init_model_by_parameter(p):
     # model
     model_param = model_param_to_use(p)
+    method = 'diffusion' if p['noising_process'] == 'diffusion' else p['pdmp']['sampler']
     if not is_image_dataset(p['data']['dataset']):
         # model
-        if p['noising_process'] == 'diffusion':
+        if method in ['diffusion', 'ZigZag']:
             model = Model.LevyDiffusionModel(nfeatures = p['data']['dim'],
                                              device=p['device'], 
-                                             p_model_mlp=model_param)
-        elif p['pdmp']['sampler'] == 'ZigZag':
-            model = Model.LevyDiffusionModel(nfeatures = 2*p['data']['dim'], # takes X_t, V_t as input
-                                             device=p['device'], 
-                                             p_model_mlp=model_param)
+                                             p_model_mlp=model_param,
+                                             noising_process=method)
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             model = zuko.flows.NSF(p['data']['dim'], # generates V_t
@@ -245,7 +243,7 @@ def init_model_by_parameter(p):
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
         model = model.to(p['device'])
     else:
-        if (p['noising_process'] == 'diffusion') or (p['pdmp']['sampler'] == 'ZigZag'):
+        if method in ['diffusion', 'ZigZag']:
             model = _unet_model(p, p_model_unet = model_param)
             model = model.to(p['device'])
         else:

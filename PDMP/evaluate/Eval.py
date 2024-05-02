@@ -211,14 +211,7 @@ class Eval:
                 fig = self.gen_manager.get_image() # todo: load an image from the folder
             else:
                 fig = None
-        
-        # for the moment, do not save the figures. Compatibility issues between different versions of matplotlib,
-        # and thus for different systems. 
-        eval_results['fig'] = None # fig
-
-        # append results to self.evals dictionnary
-        for k in eval_results.keys():
-            self.evals[k].append(eval_results[k])
+        eval_results['fig'] = fig
 
         if self.logger is not None:
             for k, v in eval_results.items():
@@ -227,6 +220,14 @@ class Eval:
                 else:
                     self.logger.log(k, v)
         
+        # for the moment, do not save the figures. Compatibility issues between different versions of matplotlib,
+        # and thus for different systems. 
+        eval_results['fig'] = None
+
+        # append results to self.evals dictionnary
+        for k in eval_results.keys():
+            self.evals[k].append(eval_results[k])
+
         # print them if necessary
         if self.verbose:
             # last loss, if computed
