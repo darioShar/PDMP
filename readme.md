@@ -2,7 +2,7 @@
 
 ## What can be done
 
-* train and evaluate PDMP models, diffusion models for data generation
+* train and evaluate PDMP/diffusion models for data generation
 * datasets: simple 2d data (gmm_grid, alpha_stable_grid etc.), image datasets (mnist, cifar10, celeba)
 
 ## Structure of the project
@@ -11,9 +11,9 @@ Todo
 
 ## How to run
 
-Open and modify ***./PDMP/config/2d_data.yml*** to configurate the run (on 2d datasets). You will find all relevant adjustable parameters. To effectively launch an experiment, launch the `./run_PDMP.py` script:
+Open and modify ***./PDMP/config/2d_data.yml*** to configurate the run (on 2d datasets). You will find all relevant adjustable parameters. To launch an experiment, run the `./run_PDMP.py` script:
 
-`python ./run_PDMP.py --config 2d_data --name {pdmp_experiment_name}`
+> python ./run_PDMP.py --config 2d_data --name {pdmp_experiment_name}
 
 this will save the results in ***./models/{pdmp_experiment_name}***. In particular, the **run** subparameters in `2d_data.yml` control the following:
 * ***epochs***: number of epochs
@@ -22,25 +22,22 @@ this will save the results in ***./models/{pdmp_experiment_name}***. In particul
 
 ## Additional possibilities for automating experiments
 
-One can pass arguments to the command line to change most of the configuration file parameters. For instance:
+One can pass arguments to the command line to change most of the configuration file's parameters. For instance:
 
-`python ./run_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --check 25 --reverse_steps 100 --noising_process pdmp --sampler HMC`
+> python ./run_pdmp.py --config 2d_data --name tmp --noising_process pdmp --sampler BPS --reverse_steps 50 --refresh_rate 1. --epochs 100 --eval 20 --scheme splitting --square_loss --logistic_loss --kl_loss
 
-loads `2d_data` config file and its parameters, runs for 100 epochs, checkpoints and evaluates every 25 epochs, uses pdmp as the noising process, uses 100 reverse steps, uses the HMC ssampler;
+loads `2d_data` config file and its parameters, saves the runs in `./models/tmp`, uses pdmp with BPS sampler, 50 reverse steps, a refresh rate of 1. runs for 100 epochs, checkpoints and evaluates every 25 epochs, uses the splitting scheme as the backward scheme and adds the square loss, logistic loss and KL loss to the training. 
 
-`python ./run_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --check 25 --reverse_steps 100 --noising_process diffusion`
+To use diffusion for instance:
+> python ./run_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --check 25 --reverse_steps 100 --noising_process diffusion
 
-does the same but uses diffusion.
-
-
-The `eval_pdmp.py` script is used to evaluate models that are already trained and stored thanks to the previous script. For instance:
+The `eval_pdmp.py` script is used to evaluate models that are already trained and checkpointed thanks to the previous script. For instance:
 
 `python ./eval_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --reverse_steps 100 --noising_process diffusion`
 
-will load the experiment that we ran just before, evaluate and store each model checkpointed at epochs multiples of 25. You could thus only evaluate the last model with `--eval 100`.
-
+will load the parameters we used previously, evaluate and store each checkpointed models at epochs multiples of 25. Pass `eval` equal to `epochs` to only evaluate a single checkpointed model.
 
 
 ## Load and display results
 
-Notebook to come. Needs small adaptations from my diffusion project.
+See `review_experiments` notebook.
