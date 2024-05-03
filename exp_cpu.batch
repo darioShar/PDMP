@@ -4,7 +4,7 @@
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --partition=cpu_devel          # Name of the partition
+#SBATCH --partition=cpu_homogen          # Name of the partition
 ## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
 #SBATCH --time=168:00:00          # total run time limit (HH:MM:SS)
 ### ## SBATCH --mem=48G                # Total memory allocated
