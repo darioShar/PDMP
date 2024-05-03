@@ -280,6 +280,7 @@ def init_noising_process_by_parameter(p):
                         sampler = p['pdmp']['sampler'],
                         refresh_rate = p['pdmp']['refresh_rate'],
                         dim = p['data']['dim'],
+                        add_losses= p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [],
                         )
     elif p['noising_process'] == 'diffusion':
         noising_process = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],

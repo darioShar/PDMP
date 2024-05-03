@@ -47,6 +47,10 @@ pdmp:
   sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 10
   refresh_rate: 1.
+  add_losses: null 
+  #- square
+  #- kl
+  #- logistic
 
 eval:
   data_to_generate: 15000
@@ -54,6 +58,7 @@ eval:
   real_data: 10000 # in case of images, number of real images to store and to compare to
 
   pdmp:
+    backward_scheme: splitting # euler
     reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
     get_sample_history: true
     #clip_denoised: false
@@ -105,7 +110,7 @@ training:
 optim:
   optimizer: adamw
   schedule: null #steplr, linear
-  lr: 0.0005
+  lr: 0.005
   warmup: 0 #1000
   lr_steps: 300000
   lr_step_size: 400

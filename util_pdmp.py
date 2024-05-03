@@ -91,7 +91,19 @@ def update_parameters_before_loading(p, args):
     if args.refresh_rate is not None:
         assert args.refresh_rate >= 0.
         p['pdmp']['refresh_rate'] = args.refresh_rate
+
+    if args.scheme is not None:
+        p['eval']['pdmp']['backward_scheme'] = args.scheme
     
+    add_losses = set(p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [])
+    if args.square_loss is not None:
+        add_losses.add('square')
+    if args.kl_loss is not None:
+        add_losses.add('kl')
+    if args.logistic_loss is not None:
+        add_losses.add('logistic')
+    p['pdmp']['add_losses'] = add_losses
+
     return p
 
 def update_experiment_after_loading(exp, args):
@@ -163,11 +175,15 @@ def parse_args():
     parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
     parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
-    parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
 
     # now for pdmp
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)
     parser.add_argument('--time_horizon', help='choose time horizon for PDMP', default = None, type = int)
+    parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
+    parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
+    parser.add_argument('--square_loss', help='add square loss', default = None, action='store_true')
+    parser.add_argument('--kl_loss', help='add kl loss', default = None, action='store_true')
+    parser.add_argument('--logistic_loss', help='add logistic regression loss', default = None, action='store_true')
 
 
     # specific to evaluation
