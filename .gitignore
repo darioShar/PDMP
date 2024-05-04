@@ -9,5 +9,4 @@ data/**
 log/**
 eval_files/**
 old/**
-scratch/**
 **.pyc
