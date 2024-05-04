@@ -104,6 +104,22 @@ def update_parameters_before_loading(p, args):
         add_losses.add('logistic')
     p['pdmp']['add_losses'] = add_losses
 
+    # model
+    if args.blocks is not None:
+        p['model']['mlp']['nblocks'] = args.blocks
+    
+    if args.units is not None:
+        p['model']['mlp']['nunits'] = args.units
+    
+    if args.transforms is not None:
+        p['model']['normalizing_flow']['transforms'] = args.transforms
+    
+    if args.depth is not None:
+        p['model']['normalizing_flow']['depth'] = args.depth
+    
+    if args.width is not None:
+        p['model']['normalizing_flow']['width'] = args.width
+
     return p
 
 def update_experiment_after_loading(exp, args):
@@ -175,6 +191,14 @@ def parse_args():
     parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
     parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
+
+    #model
+    parser.add_argument('--blocks', help='choose number of blocks in mlp', default = None, type = int)
+    parser.add_argument('--units', help='choose number of units in mlp', default = None, type = int)
+    parser.add_argument('--transforms', help='choose number of transforms in neural spline flow', default = None, type = int)
+    parser.add_argument('--depth', help='choose depth in neural spline flow', default = None, type = int)
+    parser.add_argument('--width', help='choose width in neural spline flow', default = None, type = int)
+
 
     # now for pdmp
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)
