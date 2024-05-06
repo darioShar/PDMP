@@ -59,6 +59,6 @@ for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
     # diffusion
     python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion 
 done
-
+python ./eval_pdmp.py --config 2d_data --name experiment_0 --epochs 400 --eval 400 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 0.0
 
 #python ./run_pdmp.py --config mnist --name tmp --epochs 10 --eval 5 --check 5 --reverse_steps 1000 --noising_process diffusion

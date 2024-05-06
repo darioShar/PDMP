@@ -40,7 +40,7 @@ if __name__ == '__main__':
     exp.print_parameters()
 
     for epoch in range(args.eval, args.epochs + 1, args.eval):
-        print(f'Evaluating epoch {epoch}')
+        print('Evaluating epoch {}'.format(epoch))
         exp.load(epoch=epoch)
         # change some parameters before the run.
         update_experiment_after_loading(exp, args)
