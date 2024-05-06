@@ -35,7 +35,7 @@ conda activate diffusion
 
 epochs=400
 
-samplers=('BPS' 'HMC' 'ZigZag')
+samplers=('BPS') # for the moment euler mplemented only for bps
 refresh_rates=(1.0 1.0 0.0)
 
 #for i in $(seq 0 $((${#samplers[@]} - 1))) ; do

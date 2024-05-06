@@ -6,11 +6,11 @@
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --partition=cpu_long          # Name of the partition
 ## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
-#SBATCH --time=168:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
 #SBATCH --mem=20G                # Total memory allocated
 # ### ### SBATCH --hint=multithread       # we get physical cores not logical
 #SBATCH --output=./log/%x_%j.out   # output file name
-#SBATCH --array=10              # job array index
+#SBATCH --array=0-9              # job array index
 
 exp_number=$SLURM_ARRAY_TASK_ID
 
