@@ -1,0 +1,57 @@
+#!/bin/bash
+
+#SBATCH --job-name=PDMP    # create a short name for your job
+#SBATCH --nodes=1                # node count
+#SBATCH --ntasks=1               # total number of tasks across all nodes
+#SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --partition=cpu_homogen          # Name of the partition
+## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+#SBATCH --time=4:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --mem=20G                # Total memory allocated
+# ### ### SBATCH --hint=multithread       # we get physical cores not logical
+#SBATCH --output=./log/%x_%j.out   # output file name
+#SBATCH --array=0-9              # job array index
+
+exp_number=$SLURM_ARRAY_TASK_ID
+
+echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
+
+set -x
+cd ${SLURM_SUBMIT_DIR}
+
+module purge
+module load cuda/11.4.0
+
+source /home/$USER/.bashrc
+conda activate diffusion
+
+epochs=400
+
+# ZigZag with refresh rate 0.
+num_blocks=(8 16 32 64)
+num_units=(32 64 128)
+for i in $(seq 0 $(( ${#num_blocks[@]} - 1)) ) ; do
+    echo "Submitting experiment ${exp_number}, ZigZag, with num_blocks=${num_blocks[${i}]}"
+    # pdmp
+    for j in $(seq 0 $(( ${#num_units[@]}-1)) ) ; do
+        echo "pdmp with num_units=${num_units[${j}]} "
+        python ./run_pdmp.py --config 2d_data --name experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 0.0 --blocks ${num_blocks[${i}]} --units ${num_units[${j}]}
+    done
+done
+
+
+# other samplers with refresh rate 1.
+samplers=('BPS' 'HMC')
+depth=(3 9 18)
+width=(64 128 256)
+for i in $(seq 0 $(( ${#depth[@]} - 1)) ) ; do
+    echo "Submitting experiment ${exp_number}, with depth=${depth[${i}]}"
+    # pdmp
+    for j in $(seq 0 $(( ${#width[@]}-1)) ) ; do
+        echo "pdmp with width=${width[${j}]} "
+        for k in $(seq 0 $(( ${#samplers[@]}-1)) ) ; do
+            echo "pdmp with samplers=${samplers[${k}]} "
+            python ./run_pdmp.py --config 2d_data --name experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${k}]} --refresh_rate 1.0 --depth ${depth[${i}]} --width ${width[${j}]}
+        done
+    done
+done
