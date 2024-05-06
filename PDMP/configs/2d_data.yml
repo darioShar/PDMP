@@ -117,7 +117,7 @@ optim:
   lr_gamma: 0.99
 
 run:
-  epochs: 10
-  eval_freq: 10
-  checkpoint_freq: null
+  epochs: 400
+  eval_freq: 50
+  checkpoint_freq: 400
   progress: true # print progress bar

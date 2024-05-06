@@ -535,16 +535,16 @@ class PDMP:
 
         if 'square' in self.add_losses:
             ## square loss: tends not to work well in my experience
-            loss += torch.exp(2*(log_nu_V_t + loss)) 
-            loss -= 2 * torch.exp(log_nu_V-output_V)
+            output += torch.exp(2*(log_nu_V_t + loss)) 
+            output -= 2 * torch.exp(log_nu_V-output_V)
         if 'kl' in self.add_losses:
             ## KL divergence based loss: pretty good
-            loss += torch.exp(log_nu_V_t + loss) 
-            loss -= torch.log(torch.exp(log_nu_V-output_V))
+            output += torch.exp(log_nu_V_t + loss) 
+            output -= torch.log(torch.exp(log_nu_V-output_V))
         if 'logistic' in self.add_losses:
             ## logistic regression based loss: seems fine
-            loss -= torch.log(1/(1+torch.exp(log_nu_V_t + loss)) )
-            loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
+            output -= torch.log(1/(1+torch.exp(log_nu_V_t + loss)) )
+            output -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
 
         return output
 
