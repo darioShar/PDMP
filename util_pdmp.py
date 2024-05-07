@@ -102,7 +102,11 @@ def update_parameters_before_loading(p, args):
         add_losses.add('kl')
     if args.logistic_loss is not None:
         add_losses.add('logistic')
-    p['pdmp']['add_losses'] = add_losses
+    if args.ml_loss is not None:
+        add_losses.add('ml')
+    if args.hyvarinen_loss is not None:
+        add_losses.add('hyvarinen')
+    p['pdmp']['add_losses'] = sorted(list(add_losses))
 
     # model
     if args.blocks is not None:
@@ -208,6 +212,8 @@ def parse_args():
     parser.add_argument('--square_loss', help='add square loss', default = None, action='store_true')
     parser.add_argument('--kl_loss', help='add kl loss', default = None, action='store_true')
     parser.add_argument('--logistic_loss', help='add logistic regression loss', default = None, action='store_true')
+    parser.add_argument('--ml_loss', help='add maximum likelihood loss', default = None, action='store_true')
+    parser.add_argument('--hyvarinen_loss', help='add hyvarinen loss', default = None, action='store_true')
 
 
     # specific to evaluation

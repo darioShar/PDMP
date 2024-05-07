@@ -47,7 +47,9 @@ pdmp:
   sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 10
   refresh_rate: 1.
-  add_losses: null 
+  add_losses: 
+  #- hyvarinen # usually we choose it by default. Works on reflections. Mandatory for ZigZag.
+  #- ml # maximum likelihood
   #- square
   #- kl
   #- logistic

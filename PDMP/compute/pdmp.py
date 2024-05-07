@@ -33,7 +33,7 @@ class PDMP:
         self.add_losses = add_losses
 
         for x in self.add_losses:
-            assert x in ['square', 'kl', 'logistic'], 'add_loss {} nyi in proposed losses {}'.format(x, self.add_losses)
+            assert x in ['ml', 'hyvarinen', 'square', 'kl', 'logistic'], 'Trying to add_loss {}; nyi. Available: {}'.format(x, self.add_losses)
 
         # print(self.Q)
     
@@ -505,6 +505,8 @@ class PDMP:
         output_inv_0 = model(X_V_inv_t_0, t)
         output_inv_1 = model(X_V_inv_t_1, t)
         
+        # only reflections in zigzag, we have to use  hyvarinen
+        assert 'hyvarinen' in self.add_losses, 'ZigZag must use (and only uses) hvarinen loss'
         # compute the loss
         def g(x):
             return (1 / (1+x))
@@ -521,32 +523,38 @@ class PDMP:
 
         # run the model
         t = t.unsqueeze(-1).unsqueeze(-1)
-        output = -model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
-        #output = output.mean()
-
-
-        #### adding some loss for the refreshment ratio
-        log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape)))).unsqueeze(-1)
-        V = torch.randn_like(V_t)
-        log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape)))).unsqueeze(-1)
-        output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
+        output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
         
-        ### three alternative losses 
+        loss = 0
 
+        # only refreshments in hmc
+        possible_losses_hmc = ['ml', 'square', 'kl', 'logistic']
+        assert True in [x in possible_losses_hmc for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_hmc)
+        if 'ml' in self.add_losses:
+            # this should be the default loss
+            loss -= output #(X_V_t, t)
+        ### alternative losses to choose from
+        if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+            #### adding some loss for the refreshment ratio
+            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape)))).unsqueeze(-1)
+            V = torch.randn_like(V_t)
+            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape)))).unsqueeze(-1)
+            output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
         if 'square' in self.add_losses:
             ## square loss: tends not to work well in my experience
-            output += torch.exp(2*(log_nu_V_t + loss)) 
-            output -= 2 * torch.exp(log_nu_V-output_V)
+            loss += torch.exp(2*(log_nu_V_t -output)) 
+            loss -= 2 * torch.exp(log_nu_V-output_V)
         if 'kl' in self.add_losses:
             ## KL divergence based loss: pretty good
-            output += torch.exp(log_nu_V_t + loss) 
-            output -= torch.log(torch.exp(log_nu_V-output_V))
+            loss += torch.exp(log_nu_V_t -output) 
+            loss -= torch.log(torch.exp(log_nu_V-output_V))
         if 'logistic' in self.add_losses:
             ## logistic regression based loss: seems fine
-            output -= torch.log(1/(1+torch.exp(log_nu_V_t + loss)) )
-            output -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
+            loss -= torch.log(1/(1+torch.exp(log_nu_V_t -output)) )
+            loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
 
-        return output
+
+        return loss
 
     def training_loss_bps(self, model, X_t, V_t, t):
         # send to device
@@ -562,31 +570,33 @@ class PDMP:
         # run the model
         # output = model(X_V_t, t)
 
-
-
         t = t.unsqueeze(-1).unsqueeze(-1)
+        output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t)
+        loss = 0
 
-        loss = - model(torch.cat([X_t, t], dim = -1)).log_prob(V_t) #(X_V_t, t)
-
-        ## adding the Hyvarinen loss for the reflection ratio
-        output = -loss
-        temp = V_t * X_t
-        scal_prod = torch.sum(temp,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
-        norms_x = torch.sum(X_t**2,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
-        RV_t = V_t - 2*scal_prod * X_t / norms_x
-        RV_t = RV_t.detach().clone()
-        output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t) 
-        def g(x):
-            return (1 / (1+x))
-        loss += g(torch.exp(output-output_reflected))**2
-
-        #### adding some loss for the refreshment ratio
-        log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape)))).unsqueeze(-1)
-        V = torch.randn_like(V_t)
-        log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape)))).unsqueeze(-1)
-        output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
-
-        ### three alternative losses 
+        possible_losses_bps = ['ml', 'hyvarinen', 'square', 'kl', 'logistic']
+        assert True in [x in possible_losses_bps for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_bps)
+        if 'ml' in self.add_losses:
+            # this should be the default loss
+            loss -= output #(X_V_t, t)
+        ### alternative losses to choose from
+        if 'hyvarinen' in self.add_losses:
+            ## adding the Hyvarinen loss for the reflection ratio
+            temp = V_t * X_t
+            scal_prod = torch.sum(temp,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+            norms_x = torch.sum(X_t**2,dim=2).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+            RV_t = V_t - 2*scal_prod * X_t / norms_x
+            RV_t = RV_t.detach().clone()
+            output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t)
+            def g(x):
+                return 1 / (1+x)
+            loss += g(torch.exp(output-output_reflected))**2
+        if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+            #### adding some loss for the refreshment ratio
+            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape)))).unsqueeze(-1)
+            V = torch.randn_like(V_t)
+            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape)))).unsqueeze(-1)
+            output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
         if 'square' in self.add_losses:
             ## square loss: tends not to work well in my experience
             loss += torch.exp(2*(log_nu_V_t - output)) 
