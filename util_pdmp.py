@@ -115,10 +115,10 @@ def update_parameters_before_loading(p, args):
         p['model']['normalizing_flow']['transforms'] = args.transforms
     
     if args.depth is not None:
-        p['model']['normalizing_flow']['depth'] = args.depth
+        p['model']['normalizing_flow']['hidden_depth'] = args.depth
     
     if args.width is not None:
-        p['model']['normalizing_flow']['width'] = args.width
+        p['model']['normalizing_flow']['hidden_width'] = args.width
 
     return p
 
