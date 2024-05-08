@@ -30,7 +30,7 @@ epochs=300
 refresh_rates=(0.0 0.1 0.5 1.0 2.0 5.0 10.0)
 for j in $(seq 0 $(( ${#refresh_rates[@]}-1)) ) ; do
     echo "Using refresh_rate=${refresh_rates[${j}]}"
-    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate ${refresh_rates[${j}]} --hyvarinen_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate ${refresh_rates[${j}]} --hyvarinen_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
 done

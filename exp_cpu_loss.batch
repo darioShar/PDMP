@@ -32,17 +32,17 @@ refresh_rates=(1.0 1.0)
 
 for i in $(seq 0 $((${#samplers[@]} - 1))) ; do
     echo "Submitting experiment ${exp_number}, pdmp with sampler=${samplers[${i}]}"
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --kl_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --logistic_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --square_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --kl_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --square_loss
+    
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --kl_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --square_loss
 
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --kl_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --logistic_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --square_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --ml_loss
 
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --ml_loss
-
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --logistic_loss
 done

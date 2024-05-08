@@ -32,6 +32,6 @@ num_blocks=(2 8 32 128)
 num_units=(16 64 256)
 for i in $(seq 0 $(( ${#num_blocks[@]} - 1)) ) ; do
     for j in $(seq 0 $(( ${#num_units[@]}-1)) ) ; do
-        python ./run_pdmp.py --config 2d_data --name experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --blocks ${num_blocks[${i}]} --units ${num_units[${j}]} --hyvarinen_loss
+        python ./run_pdmp.py --config 2d_data --name cleps/experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --blocks ${num_blocks[${i}]} --units ${num_units[${j}]} --hyvarinen_loss
     done
 done

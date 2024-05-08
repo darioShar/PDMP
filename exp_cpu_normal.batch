@@ -53,9 +53,9 @@ reverse_steps=(1 2 3 5 10 20 30 50 100 200)
 for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
     echo "Evaluating experiment ${exp_number} with reverse_steps=${reverse_steps[${i}]}"
     # pdmp
-    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --logistic_loss
-    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --logistic_loss
-    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
+    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --logistic_loss
+    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --logistic_loss
+    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
     # diffusion
-    python ./eval_pdmp.py --config 2d_data --name experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion 
+    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion 
 done

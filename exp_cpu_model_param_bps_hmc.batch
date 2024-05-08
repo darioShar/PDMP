@@ -34,7 +34,7 @@ width=(16 64 256)
 for i in $(seq 0 $(( ${#depth[@]} - 1)) ) ; do
     for j in $(seq 0 $(( ${#width[@]}-1)) ) ; do
         for k in $(seq 0 $(( ${#samplers[@]}-1)) ) ; do
-            python ./run_pdmp.py --config 2d_data --name experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${k}]} --refresh_rate 1.0 --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss
+            python ./run_pdmp.py --config 2d_data --name cleps/experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${k}]} --refresh_rate 1.0 --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss
         done
     done
 done
