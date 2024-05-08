@@ -88,7 +88,7 @@ class PDMP:
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
                                     (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :2]
                 #print(density_ratio.mean(dim=0))
-                switch_rate = density_ratio.cpu()* torch.maximum(torch.zeros(x.shape), -v * x) + self.refreshment_rate * torch.ones_like(x)
+                switch_rate = density_ratio.cpu()* (torch.maximum(torch.zeros(x.shape), -v * x) + self.refreshment_rate * torch.ones_like(x))
                 self.flip_given_rate(v, switch_rate, delta)
                 x -= v * delta / 2 #x - v * δ / 2
                 #print(x, v)

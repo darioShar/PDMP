@@ -6,8 +6,8 @@
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --partition=cpu_homogen          # Name of the partition
 ## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
-#SBATCH --time=168:00:00          # total run time limit (HH:MM:SS)
-#SBATCH --mem=20G                # Total memory allocated
+#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --mem=12G                # Total memory allocated
 # ### ### SBATCH --hint=multithread       # we get physical cores not logical
 #SBATCH --output=./log/%x_%j.out   # output file name
 #SBATCH --array=0-9              # job array index
@@ -24,27 +24,13 @@ module load cuda/11.4.0
 
 source /home/$USER/.bashrc
 conda activate diffusion
-# Lp=('1.0' '1.5' '2.0')
 
-# we need to run BPS, HMC, ZigZag, diffusion on 2D data.
-# I want to compare end results
-# and I want to see how this scales with diffusion steps. We'll do that with eval_pdmp.py at the end. Let's go with 100 diffusion steps for everybody at first, with a simple 4-gmm
+epochs=300
 
-# first train the models
-
-epochs=400
-
-samplers=('BPS' 'HMC' 'ZigZag')
-refresh_rates=(0. 0.1 0.5 0.9 1.0 2.0)
-
-for i in $(seq 0 $(( ${#samplers[@]} - 1)) ) ; do
-    echo "Submitting experiment ${exp_number}, pdmp with sampler=${samplers[${i}]}"
-    # pdmp
-    for j in $(seq 0 $(( ${#refresh_rates[@]}-1)) ) ; do
-        echo "Using refresh_rate=${refresh_rates[${j}]}"
-        python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${j}]}
-    done
+refresh_rates=(0.0 0.1 0.5 1.0 2.0 5.0 10.0)
+for j in $(seq 0 $(( ${#refresh_rates[@]}-1)) ) ; do
+    echo "Using refresh_rate=${refresh_rates[${j}]}"
+    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate ${refresh_rates[${j}]} --hyvarinen_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_refresh_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate ${refresh_rates[${j}]} --ml_loss --logistic_loss
 done
-
-
-#python ./run_pdmp.py --config mnist --name tmp --epochs 10 --eval 5 --check 5 --reverse_steps 1000 --noising_process diffusion

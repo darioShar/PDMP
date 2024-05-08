@@ -25,23 +25,24 @@ module load cuda/11.4.0
 source /home/$USER/.bashrc
 conda activate diffusion
 
-# Lp=('1.0' '1.5' '2.0')
-
-# we need to run BPS, HMC, ZigZag, diffusion on 2D data.
-# I want to compare end results
-# and I want to see how this scales with diffusion steps. We'll do that with eval_pdmp.py at the end. Let's go with 100 diffusion steps for everybody at first, with a simple 4-gmm
-
-# first train the models
-
-epochs=400
+epochs=300
 
 samplers=('BPS' 'HMC')
 refresh_rates=(1.0 1.0)
 
 for i in $(seq 0 $((${#samplers[@]} - 1))) ; do
     echo "Submitting experiment ${exp_number}, pdmp with sampler=${samplers[${i}]}"
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --kl_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --kl_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --square_loss
+
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --kl_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --logistic_loss
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --square_loss
+
+    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --ml_loss
+
     python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --logistic_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --square_loss
-    python ./run_pdmp.py --config 2d_data --name experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --kl_loss --logistic_loss
 done

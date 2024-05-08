@@ -12,6 +12,17 @@ from PDMP.pdmp_utils.Distributions import *
 import PDMP.models.DiffusionBlocks as Block
 import PDMP.models.Embeddings as Embedding
 
+
+def zero_module(module):
+    """
+    Zero out the parameters of a module and return it.
+    """
+    for p in module.parameters():
+        p.detach().zero_()
+    return module
+
+
+
 class ExpBlock(nn.Module):
     def __init__(self, 
                  nunits, 
@@ -148,7 +159,7 @@ class LevyDiffusionModel(nn.Module):
                                                     if self.a_pos_emb \
                                                     else False,
                                                 activation = nn.SiLU),
-                nn.Linear(self.nunits, self.nfeatures)
+                zero_module(nn.Linear(self.nunits, self.nfeatures))
             ])
         if self.compute_gamma:
             self.outblocks_var = nn.ModuleList([
@@ -164,7 +175,7 @@ class LevyDiffusionModel(nn.Module):
                                                     if self.a_pos_emb \
                                                     else False,
                                                 activation = nn.SiLU),
-                nn.Linear(self.nunits, self.nfeatures), #1 if self.isotropic else self.features),
+                zero_module(nn.Linear(self.nunits, self.nfeatures)), #1 if self.isotropic else self.features),
                 #nn.Sigmoid()
             ])
         

@@ -82,7 +82,7 @@ model:
     compute_gamma: false
     dropout_rate: 0.0
     group_norm: true
-    nblocks: 32
+    nblocks: 8
     no_a: true
     nunits: 64
     skip_connection: true
@@ -119,7 +119,7 @@ optim:
   lr_gamma: 0.99
 
 run:
-  epochs: 400
+  epochs: 300
   eval_freq: 50
-  checkpoint_freq: 400
+  checkpoint_freq: null
   progress: true # print progress bar
