@@ -110,7 +110,7 @@ class Eval:
             #self.gen_model.generate(data_to_generate, 
             #                print_progression= True,
             #                **kwargs)
-            self.gen_manager.generate(model, data_to_generate, print_progression=True, **kwargs)
+            self.gen_manager.generate(model, data_to_generate, print_progression=False, **kwargs)
             
             # prepare data. REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT
             gen_samples = self.gen_manager.samples

@@ -28,15 +28,17 @@ conda activate diffusion
 epochs=300
 
 # other samplers with refresh rate 1.
-samplers=('BPS' 'HMC')
-depth=(2 8 32 128)
-width=(16 64 256)
+
+depth=(2 8)
+width=(256)
+refresh_rate=(1.0 2.0 5.0)
+
 for i in $(seq 0 $(( ${#depth[@]} - 1)) ) ; do
     for j in $(seq 0 $(( ${#width[@]}-1)) ) ; do
-        for k in $(seq 0 $(( ${#samplers[@]}-1)) ) ; do
-
-            python ./run_pdmp.py --config 2d_data --name cleps/experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${k}]} --refresh_rate 1.0 --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss
-        
+        for l in $(seq 0 $(( ${#refresh_rate[@]}-1)) ) ; do
+            python ./run_pdmp.py --config 2d_data --name cleps/experiment_optimize_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate ${refresh_rate[${l}]} --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss --hyvarinen_loss
+            python ./run_pdmp.py --config 2d_data --name cleps/experiment_optimize_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate ${refresh_rate[${l}]} --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss
+            python ./run_pdmp.py --config 2d_data --name cleps/experiment_optimize_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate ${refresh_rate[${l}]} --blocks ${depth[${i}]} --units ${width[${j}]} --hyvarinen_loss
         done
     done
 done

@@ -73,8 +73,8 @@ class PDMP:
             v_init = torch.tensor([-1., 1.])[torch.randint(0, 2, (x_init.shape[0],))].reshape(x_init.shape[0], *[1]*len(x_init.shape[1:])).repeat(1, *(x_init.shape[1:]))
         #chain = [pdmp.Skeleton(torch.clone(x_init), torch.clone(v_init), 0.)]
         chain = []
-        x = x_init.clone()
-        v = v_init.clone()
+        x = x_init.clone().to(self.device)
+        v = v_init.clone().to(self.device)
         model.eval()
         with torch.inference_mode():
             for i in print_progession(range(int(N))):
@@ -87,8 +87,10 @@ class PDMP:
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
                                     (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :2]
+                #output = model(x.to(self.device), (torch.ones(x.shape[0])*time_mid).to(self.device))
+                #density_ratio, selected_output_inv = self.get_densities_from_mlp_output(output, v.to(self.device))
                 #print(density_ratio.mean(dim=0))
-                switch_rate = density_ratio.cpu()* (torch.maximum(torch.zeros(x.shape), -v * x) + self.refreshment_rate * torch.ones_like(x))
+                switch_rate = density_ratio* (torch.maximum(torch.zeros(x.shape).to(self.device), -v * x) + self.refreshment_rate * torch.ones_like(x).to(self.device))
                 self.flip_given_rate(v, switch_rate, delta)
                 x -= v * delta / 2 #x - v * δ / 2
                 #print(x, v)
@@ -480,6 +482,19 @@ class PDMP:
         return chain
     
     
+    def get_densities_from_mlp_output(self, output, v):
+        D = output.shape[-1]//2
+        index = ((v +1.) / 2.0).int()
+        indices_for_gathering = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * index
+        indices_for_gathering_inv = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * (1 - index)
+        #print(indices_for_gathering.shape)
+        final_indices = indices_for_gathering.expand(-1, -1, D)
+        final_indices_inv = indices_for_gathering_inv.expand(-1, -1, D)
+        #print(final_indices.shape)
+        selected_output = torch.gather(output, 2, final_indices)
+        selected_output_inv = torch.gather(output, 2, final_indices_inv)
+        return selected_output, selected_output_inv
+
     def training_losses_zigzag(self, model, X_t, V_t, t):
         # send to device
         X_t = X_t.to(self.device)
@@ -493,23 +508,30 @@ class PDMP:
 
         # run the model
         output = model(X_V_t, t)
-
+        #output = model(X_t, t)
+        
         assert X_t.shape[-1] == 2, 'only dimension 2 is implemened'
         # invert time on component 1 and 2
         X_V_inv_t_0 = X_V_t.detach().clone() # clone to avoid modifying the original tensor, detach to avoid computing gradients on original tensor
         X_V_inv_t_1 = X_V_t.detach().clone()
         X_V_inv_t_0[:, :, 2] *= -1 # reverse speed on i = 1
         X_V_inv_t_1[:, :, 3] *= -1 # reverse speed on i = 2
-
-        # run the model on each inverted speed component
+#
+        ## run the model on each inverted speed component
         output_inv_0 = model(X_V_inv_t_0, t)
         output_inv_1 = model(X_V_inv_t_1, t)
+
+        #selected_output, selected_output_inv = self.get_densities_from_mlp_output(output, V_t)
         
         # only reflections in zigzag, we have to use  hyvarinen
         assert 'hyvarinen' in self.add_losses, 'ZigZag must use (and only uses) hvarinen loss'
         # compute the loss
         def g(x):
             return (1 / (1+x))
+        
+        #loss = g(selected_output)**2 + g(selected_output_inv)**2
+        #loss -= 2*g(selected_output)
+
         loss = g(output[:, :, 0])**2 + g(output_inv_0[:, :, 0])**2
         loss += g(output[:, :, 1])**2 + g(output_inv_1[:, :, 1])**2
         loss -= 2*(g(output[:, :, 0]) + g(output[:, :, 1]))

@@ -120,8 +120,8 @@ class LevyDiffusionModel(nn.Module):
                                           self.act)
         
         # possible exp block, at the end
-        in_features = self.nfeatures if self.noising_process == 'diffusion' else 2*self.nfeatures
-        self.linear_in =  nn.Linear(in_features + self.additional_dim, self.nunits)
+        features = self.nfeatures if self.noising_process == 'diffusion' else 2*self.nfeatures
+        self.linear_in =  nn.Linear(features + self.additional_dim, self.nunits) # for ZigZag, take d dimension and output 2d dimension
         
         self.inblock = nn.Sequential(self.linear_in,
                                      self.group_norm_in, 
@@ -159,7 +159,7 @@ class LevyDiffusionModel(nn.Module):
                                                     if self.a_pos_emb \
                                                     else False,
                                                 activation = nn.SiLU),
-                zero_module(nn.Linear(self.nunits, self.nfeatures))
+                zero_module(nn.Linear(self.nunits, self.nfeatures)) # 2d outputs, v=1 for the first d ones, v=-1 for the other d ones
             ])
         if self.compute_gamma:
             self.outblocks_var = nn.ModuleList([
