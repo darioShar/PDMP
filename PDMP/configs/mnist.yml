@@ -6,7 +6,7 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 64 # batch size
+  bs: 256 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -34,12 +34,13 @@ diffusion:
 
 
 eval:
-  data_to_generate: 5000
+  data_to_generate: 128
   batch_size: 128
-  real_data: 10000 # in case of images, number of real images to store and to compare to
+  real_data: 128 # in case of images, number of real images to store and to compare to
 
   pdmp:
-    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
+    backward_scheme: splitting # euler
+    reverse_steps: 50 # reverse_steps are only part of evaluation, not of the training
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
@@ -78,7 +79,7 @@ model:
   # this is for the other samplers; normalizing flows
   normalizing_flow:
     transforms: 3
-    hidden_width: 2048
+    hidden_width: 256 # 2048
     hidden_depth: 9
 
 
@@ -86,7 +87,7 @@ training:
   pdmp:
     ema_rates:
     - 0.99
-    grad_clip: 1.0 #1.0
+    grad_clip: null #1.0
   diffusion:
     ema_rates: 
     - 0.99

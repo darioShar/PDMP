@@ -155,14 +155,14 @@ class Manager:
         
         for ema_obj in self.ema_objects:
             # if mu has not been run previously, no loading
-            if ema_obj['mdoel'].mu not in saved_mus:
+            if ema_obj['model'].mu not in saved_mus:
                 continue
             # find index of our mu of interest
-            idx = saved_mus.index(mu)
+            idx = saved_mus.index(ema_obj['model'].mu)
             # load the saved evaluation
             ema_obj['eval'].evals = saved_ema_evals[idx]
             # log the saved evaluation
-            ema_obj['eval'].log_existing_eval_values(folder='eval_ema_{}'.format(mu))
+            ema_obj['eval'].log_existing_eval_values(folder='eval_ema_{}'.format(ema_obj['model'].mu))
 
         '''saved_ema_evals = [ema_eval_save for ema_eval_save, mu_save in eval_save['ema_evals']]
         saved_mus = [mu_save for ema_eval_save, mu_save in eval_save['ema_evals']]

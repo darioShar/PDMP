@@ -141,7 +141,7 @@ def prepare_data_directories(dataset_name, dataset_files, remove_existing_eval_f
                 For the moment we are loading {} data points. We may need more for the other datasets, \
                     and anyway we should implement somehting more systematic'.format(num_real_data)
             #data = gen_model.load_original_data(evaluation_files) # load all the data. Number of datapoints specific to mnist and cifar10
-            data_to_store = 10000
+            data_to_store = num_real_data
             print('saving {} original images from pool of {} datapoints'.format(data_to_store, len(dataset_files)))
             for i in range(data_to_store):
                 if (i%500) == 0:
