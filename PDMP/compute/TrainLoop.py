@@ -41,7 +41,7 @@ class TrainLoop:
                 if max_batch_per_epoch is not None:
                     if i >= max_batch_per_epoch:
                         break
-
+                
                 loss = noising_process.training_losses(model, Xbatch, **kwargs)
 
                 #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
@@ -64,10 +64,12 @@ class TrainLoop:
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
+                print('batch_loss', loss.item())
                 #print(loss.item())
             if epoch_pbar is not None:
                 epoch_pbar.update(1)
             epoch_loss = epoch_loss / steps
+            print('epoch_loss', epoch_loss)
             self.epochs += 1
             if epoch_callback is not None:
                 epoch_callback(epoch_loss)

@@ -220,7 +220,10 @@ def model_param_to_use(p):
         else:
             return p['model']['mlp']
     elif p['pdmp']['sampler'] == 'ZigZag':
-        return p['model']['mlp']
+        if is_image_dataset(p['data']['dataset']):
+            return p['model']['unet']
+        else:
+            return p['model']['mlp']
     else:
         return p['model']['normalizing_flow']
 
@@ -241,19 +244,17 @@ def init_model_by_parameter(p):
                                    p['data']['dim'] + 1,  # takes X_t, t as conditioning
                                    transforms=model_param['transforms'], #3, 
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
-        model = model.to(p['device'])
     else:
         if method in ['diffusion', 'ZigZag']:
             model = _unet_model(p, p_model_unet = model_param)
-            model = model.to(p['device'])
         else:
-            assert False, 'Normalizing flows not yet implemented for image data.'
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
-            model = zuko.flows.NSF(p['data']['dim'], # generates V_t
-                                   p['data']['dim'] + 1,  # takes X_t, t as conditioning
+            data_dim = p['data']['image_size']**2 * p['data']['channels']
+            model = zuko.flows.NSF(data_dim, # generates V_t
+                                   data_dim + 1,  # takes X_t, t as conditioning
                                    transforms=model_param['transforms'], #3, 
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
-    return model
+    return model.to(p['device'])
 
 
 def init_data_by_parameter(p):
@@ -279,7 +280,6 @@ def init_noising_process_by_parameter(p):
                         reverse_steps = p['eval']['pdmp']['reverse_steps'],
                         sampler = p['pdmp']['sampler'],
                         refresh_rate = p['pdmp']['refresh_rate'],
-                        dim = p['data']['dim'],
                         add_losses= p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [],
                         )
     elif p['noising_process'] == 'diffusion':

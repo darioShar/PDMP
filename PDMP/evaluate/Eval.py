@@ -189,7 +189,7 @@ class Eval:
                             128, # batch size 
                             self.noising_process.device, 
                             num_workers= 4 if self.is_image else 0,
-                            max_num_files=total_generated_data)
+                            max_num_files=data_to_generate if data_to_generate != 0 else None) # None means read whole image directory, which should be full from a previous run
         
         for k, v in prdc_value.items():
             eval_results[k] = v

@@ -6,14 +6,19 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 128 # batch size
+  bs: 64 # batch size
 
-noising_process: 'diffusion' # pdmp, diffusion, None
+noising_process: 'pdmp' # pdmp, diffusion, None
 
 pdmp:
   sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 10
   refresh_rate: 1.
+  add_losses: 
+  #- hyvarinen
+  #- ml
+  #- logistic
+
 
 diffusion:
   alpha: 2.0
@@ -46,17 +51,6 @@ eval:
     #new_time_spacing
 
 model:
-  model_type: "ddpm"
-  attn_resolutions: [2, 4]
-  channel_mult: [1, 2, 2, 2]
-  compute_gamma: false
-  dropout: 0.1
-  model_channels: 32
-  num_heads: 4
-  num_res_blocks: 2
-
-
-model:
   # this is for 2d ZigZag, and 2d diffusion
   mlp:
     a_emb_size: 32
@@ -84,15 +78,15 @@ model:
   # this is for the other samplers; normalizing flows
   normalizing_flow:
     transforms: 3
-    hidden_width: 128
-    hidden_depth: 3
+    hidden_width: 2048
+    hidden_depth: 9
 
 
 training:
   pdmp:
     ema_rates:
     - 0.99
-    grad_clip: null #1.0
+    grad_clip: 1.0 #1.0
   diffusion:
     ema_rates: 
     - 0.99
@@ -105,9 +99,9 @@ training:
 
 optim:
   optimizer: adamw
-  schedule: steplr #steplr
-  lr: 0.0005
-  warmup: 50 #100
+  schedule: null #steplr
+  lr: 0.0001
+  warmup: 0 #100
   lr_steps: 300000
   lr_step_size: 100
   lr_gamma: 0.99
@@ -115,5 +109,5 @@ optim:
 run:
   epochs: 50
   eval_freq: null
-  checkpoint_freq: 50
+  checkpoint_freq: 5
   progress: true # print progress bar
