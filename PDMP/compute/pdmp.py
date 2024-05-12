@@ -49,7 +49,8 @@ class PDMP:
                           N, 
                           shape = None, 
                           x_init=None, 
-                          v_init=None, 
+                          v_init=None,
+                          exponent = 2.,
                           print_progession = False, 
                           get_sample_history = False):
         #print('ZigZag generation, T = {}, N = {}'.format(T, N))
@@ -58,7 +59,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**2 * T
+        timesteps = torch.linspace(1, 0, N+1)**exponent * T
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
         assert (shape is not None) or (x_init is not None) or (v_init is not None) 
@@ -108,13 +109,13 @@ class PDMP:
         # print((tmp[temp <= s]))
         v[temp <= s] = tmp[temp <= s]
 
-    def splitting_HMC_DRD(self, model, T, N, shape = None, x_init=None, v_init=None, print_progession = False, get_sample_history = False):
+    def splitting_HMC_DRD(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**2 * T
+        timesteps = torch.linspace(1, 0, N+1)**exponent * T
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -155,6 +156,7 @@ class PDMP:
                 #t = t.reshape(-1, 1)
                 t = time_mid * torch.ones(x.shape[0]).to(self.device)
                 t = t.reshape(-1, 1)
+                t = t.repeat(1, 32)
                 model = model.to(self.device)
                 print('run model log_prob')
                 log_p_t_model = model(torch.cat([x, t], dim = -1)).log_prob(v) #(X_V_t, t)
@@ -188,13 +190,13 @@ class PDMP:
         event_time = torch.distributions.exponential.Exponential(lambdas)
         v[event_time < s] = v_reflect[event_time < s]
     
-    def splitting_BPS_RDBDR(self, model, T, N, shape = None, x_init=None, v_init=None, print_progession = False, get_sample_history = False):
+    def splitting_BPS_RDBDR(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**2 * T
+        timesteps = torch.linspace(1, 0, N+1)**exponent * T
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -339,13 +341,13 @@ class PDMP:
         x -= v * time_horizons.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
 
 
-    def Euler_BPS(self, model, T, N, shape = None, x_init=None, v_init=None, print_progession = False, get_sample_history=False):
+    def Euler_BPS(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history=False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
             print_progession = lambda x : x
         print('using Euler')
-        timesteps = torch.linspace(1, 0, N+1)**2 * T
+        timesteps = torch.linspace(1, 0, N+1)**exponent * T
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -439,11 +441,14 @@ class PDMP:
                         time_spacing = None,
                         backward_scheme = None,
                         initial_data = None, # sample from Gaussian, else use this initial_data
+                        exponent = 2.,
                         print_progression = False,
                         get_sample_history = False,
                         ):
         assert initial_data is None, 'Using specified initial data is not yet implemented.'
         
+        print('sampling with exponent {}'.format(exponent))
+
         reverse_sample_func = {
             'ZigZag': {
                 'splitting': self.splitting_zzs_DBD,
@@ -467,6 +472,7 @@ class PDMP:
                                 self.T, 
                                 reverse_steps,
                                 shape = shape,
+                                exponent=exponent,
                                 print_progession=print_progression,
                                 get_sample_history = get_sample_history)
         return samples_or_chain
@@ -576,6 +582,7 @@ class PDMP:
         X_t_t = X_t.reshape(X_t.shape[0], -1)
         V_t_t = V_t.reshape(V_t.shape[0], -1)
         t = t.reshape(-1, 1)
+        t = t.repeat(1, 32)
         model = model.to(self.device)
         output = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_t_t) #(X_V_t, t)
         #model.eval()

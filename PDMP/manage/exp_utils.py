@@ -251,7 +251,7 @@ def init_model_by_parameter(p):
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             data_dim = p['data']['image_size']**2 * p['data']['channels']
             model = zuko.flows.NSF(data_dim, # generates V_t
-                                   data_dim + 1,  # takes X_t, t as conditioning
+                                   data_dim + 16,  # takes X_t, t as conditioning
                                    transforms=model_param['transforms'], #3, 
                                    hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     return model.to(p['device'])

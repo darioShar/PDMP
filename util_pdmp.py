@@ -108,6 +108,9 @@ def update_parameters_before_loading(p, args):
         add_losses.add('hyvarinen')
     p['pdmp']['add_losses'] = sorted(list(add_losses))
 
+    if args.exponent is not None:
+        p['eval']['pdmp']['exponent'] = args.exponent
+
     # model
     if args.blocks is not None:
         p['model']['mlp']['nblocks'] = args.blocks
@@ -221,6 +224,7 @@ def parse_args():
     parser.add_argument('--ema_eval', help='evaluate only ema models', action='store_true', default = False)
     parser.add_argument('--ddim', help='use ddim for sampling', default = False, action='store_true')
     parser.add_argument('--clip', help='use clip denoised', default = False, action='store_true')
+    parser.add_argument('--exponent', help='exponent in reverse_steps', default = None, type = float)
 
     args = parser.parse_args()
 

@@ -62,6 +62,7 @@ eval:
   pdmp:
     backward_scheme: splitting # euler
     reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
+    exponent: 2 # might need to remove that for hashes to match afterwards.
     get_sample_history: true
     #clip_denoised: false
     #new_time_spacing
@@ -92,8 +93,8 @@ model:
   # this is for the other samplers; normalizing flows
   normalizing_flow:
     transforms: 3
-    hidden_width: 128
-    hidden_depth: 9
+    hidden_width: 256
+    hidden_depth: 8
 
 training:
   pdmp:
