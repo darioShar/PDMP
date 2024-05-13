@@ -84,8 +84,6 @@ class PDMP:
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
                                     (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :x.shape[-1]]
-                print('x', x.shape)
-                print('density_ratio', density_ratio.shape)
                 #output = model(x.to(self.device), (torch.ones(x.shape[0])*time_mid).to(self.device))
                 #density_ratio, selected_output_inv = self.get_densities_from_mlp_output(output, v.to(self.device))
                 #print(density_ratio.mean(dim=0))
@@ -544,18 +542,18 @@ class PDMP:
         components_drawn = set()
         for i in range(subsamples):
             # Generate random coordinates for each data point in the batch
-            random_components = tuple([torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
-            while (random_components in components_drawn) and (len(components_drawn) < D):
-                random_components = tuple([torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
-            components_drawn.add(random_components)
+            random_components = tuple([slice(None)]+[torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
+            while (random_components[1:] in components_drawn) and (len(components_drawn) < D):
+                random_components = tuple([slice(None)]+[torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
+            components_drawn.add(random_components[1:])
             # Negate the values at the randomly chosen coordinates
             X_inv = X_t.detach().clone()
             V_inv = V_t.detach().clone()
-            V_inv[:, *random_components] *= -1
+            V_inv[random_components] *= -1
             X_V_inv = torch.concat((X_inv, V_inv), dim = -1)
             output_inv = model(X_V_inv, t)
-            loss += g(output[:, *random_components])**2 + g(output_inv[:, *random_components])**2
-            loss -= 2*(g(output[:, *random_components]))
+            loss += g(output[random_components])**2 + g(output_inv[random_components])**2
+            loss -= 2*(g(output[random_components]))
         loss = loss / subsamples
         #invert time on component 1 and 2
         #X_V_inv_t_0 = X_V_t.detach().clone() # clone to avoid modifying the original tensor, detach to avoid computing gradients on original tensor
