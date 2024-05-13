@@ -64,8 +64,8 @@ class TrainLoop:
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
-                print('batch_loss', loss.item())
                 #print(loss.item())
+                print('batch_loss', loss.item())
             if epoch_pbar is not None:
                 epoch_pbar.update(1)
             epoch_loss = epoch_loss / steps

@@ -111,6 +111,9 @@ def update_parameters_before_loading(p, args):
     if args.exponent is not None:
         p['eval']['pdmp']['exponent'] = args.exponent
 
+    if args.subsamples is not None:
+        p['training']['pdmp']['subsamples'] = args.subsamples
+
     # model
     if args.blocks is not None:
         p['model']['mlp']['nblocks'] = args.blocks
@@ -126,6 +129,14 @@ def update_parameters_before_loading(p, args):
     
     if args.width is not None:
         p['model']['normalizing_flow']['hidden_width'] = args.width
+
+    if args.embedding_type is not None:
+        p['model']['normalizing_flow']['time_emb_type'] = args.embedding_type
+        p['model']['mlp']['time_emb_type'] = args.embedding_type
+
+    if args.embedding_size is not None:
+        p['model']['normalizing_flow']['time_emb_size'] = args.embedding_size
+        p['model']['mlp']['time_emb_size'] = args.embedding_size
 
     return p
 
@@ -205,6 +216,8 @@ def parse_args():
     parser.add_argument('--transforms', help='choose number of transforms in neural spline flow', default = None, type = int)
     parser.add_argument('--depth', help='choose depth in neural spline flow', default = None, type = int)
     parser.add_argument('--width', help='choose width in neural spline flow', default = None, type = int)
+    parser.add_argument('--embedding_type', help='choose time embedding type', default = None, type = str)
+    parser.add_argument('--embedding_size', help='choose time embedding size', default = None, type = int)
 
 
     # now for pdmp
@@ -217,6 +230,7 @@ def parse_args():
     parser.add_argument('--logistic_loss', help='add logistic regression loss', default = None, action='store_true')
     parser.add_argument('--ml_loss', help='add maximum likelihood loss', default = None, action='store_true')
     parser.add_argument('--hyvarinen_loss', help='add hyvarinen loss', default = None, action='store_true')
+    parser.add_argument('--subsamples', help='subsampling for ZigZag', default = None, type=int)
 
 
     # specific to evaluation

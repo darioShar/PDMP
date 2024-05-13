@@ -102,9 +102,8 @@ class PDMP:
         event_time = torch.distributions.exponential.Exponential(lambdas)
         temp = event_time.sample()
         #temp = temp.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
-        print('run model sample refresh')
-        tmp = model(torch.cat((x,t), dim = -1)).sample()
-        print('done')
+        tmp = model.sample(x, t)
+        #tmp = model(torch.cat((x,t), dim = -1)).sample()
         # print(temp[temp <= s].shape)
         # print((tmp[temp <= s]))
         v[temp <= s] = tmp[temp <= s]
@@ -143,7 +142,8 @@ class PDMP:
                 time = timesteps[i]
                 delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
                 if get_sample_history:
-                    chain.append(torch.concat((x, v), dim = -1))
+                    # don't forget to unflatten data
+                    chain.append(torch.concat((x.reshape(*data_shape), v.reshape(*data_shape)), dim = -1))
                 # compute x_n-1 from x_n
                 x_init = x.clone()
                 v_init = v.clone()
@@ -155,17 +155,19 @@ class PDMP:
                 #t = time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)
                 #t = t.reshape(-1, 1)
                 t = time_mid * torch.ones(x.shape[0]).to(self.device)
-                t = t.reshape(-1, 1)
-                t = t.repeat(1, 32)
-                model = model.to(self.device)
-                print('run model log_prob')
-                log_p_t_model = model(torch.cat([x, t], dim = -1)).log_prob(v) #(X_V_t, t)
+                #t = t.reshape(-1, 1)
+                #t = t.repeat(1, 32)
+                #model = model.to(self.device)
+                #print('run model log_prob')
+                #log_p_t_model = model(torch.cat([x, t], dim = -1)).log_prob(v) #(X_V_t, t)
+                log_p_t_model = model(x, v, t)
 
                 #log_p_t_model = model(torch.cat((x,
                 #                                 time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
                 #                                 dim = -1
                 #                                 ).to(self.device)).log_prob(v) #[:, :, :2]
                 #log_p_t_model = log_p_t_model.squeeze(-1)
+
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 switch_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
                 # print(switch_rate)
@@ -176,10 +178,10 @@ class PDMP:
                 v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 #print(x, v)
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
+
         # unflatten
         x = x.reshape(*data_shape)
-        v = v.reshape(*data_shape)
-        
+        v = v.reshape(*data_shape)        
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
@@ -222,14 +224,16 @@ class PDMP:
                     chain.append(torch.concat((x, v), dim = -1))
 
                 # half a step R
-                log_p_t_model = model(torch.cat((x,
-                                                 time * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
-                                                 dim = -1
-                                                 ).to(self.device)).log_prob(v) #[:, :, :2]
-                log_p_t_model = log_p_t_model.squeeze(-1)
+                t = time * torch.ones(x.shape[0]).to(self.device)#.reshape(-1, *[1]*len(x.shape[1:])).to(self.device)
+                log_p_t_model = model(x, v, t)
+                #log_p_t_model = model(torch.cat((x,
+                #                                 time * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
+                #                                 dim = -1
+                #                                 ).to(self.device)).log_prob(v) #[:, :, :2]
+                #log_p_t_model = log_p_t_model.squeeze(-1)
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
-                self.refresh_given_rate(x, v, time, refresh_rate, delta/2, model)
+                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model)
 
                 # half a step D
                 x -= v * delta/2
@@ -267,15 +271,11 @@ class PDMP:
                 norm_x = torch.sum(x**2,dim = list(range(2, len(x.shape)))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
                 v_reflect = v - 2*scal_prod*x/norm_x
                 # print(v_reflect.shape)
-                log_p_t_refl = model(torch.cat((x,
-                                                 time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
-                                                 dim = -1
-                                                 ).to(self.device)).log_prob(v_reflect).squeeze(-1) #[:, :, :2]
+                t = time_mid * torch.ones(x.shape[0]).to(self.device)#.reshape(-1, *[1]*len(x.shape[1:]))
+                log_p_t_refl = model(x, v_reflect, t)#.squeeze(-1) #[:, :, :2]
                 # print("switchrate ",switch_rate.shape)
-                log_p_t = model(torch.cat((x,
-                                                 time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
-                                                 dim = -1
-                                                 ).to(self.device)).log_prob(v).squeeze(-1)
+                t = time_mid * torch.ones(x.shape[0]).to(self.device)#reshape(-1, *[1]*len(x.shape[1:])).
+                log_p_t = model(x, v, t)
                 scal_prod = scal_prod[...,0].squeeze(-1)
                 # print(scal_prod.shape)
                 switch_rate = torch.maximum(-scal_prod,torch.zeros(scal_prod.shape).to(self.device)).to(self.device)
@@ -287,20 +287,21 @@ class PDMP:
                 # print(temp.shape)
                 v[temp <= delta] = v_reflect[temp <= delta]
 
-
                 # half a step D
                 x -= v * delta/2
 
                 # half a step R
-                log_p_t_model = model(torch.cat((x,
-                                                 time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
-                                                 dim = -1
-                                                 ).to(self.device)).log_prob(v) #[:, :, :2]
-                log_p_t_model = log_p_t_model.squeeze(-1)
+                t = time_mid * torch.ones(x.shape[0]).to(self.device)#reshape(-1, *[1]*len(x.shape[1:])).
+                log_p_t = model(x, v, t)
+                #log_p_t_model = model(torch.cat((x,
+                #                                 time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)), 
+                #                                 dim = -1
+                #                                 ).to(self.device)).log_prob(v) #[:, :, :2]
+                #log_p_t_model = log_p_t_model.squeeze(-1)
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
-                self.refresh_given_rate(x, v, time_mid, refresh_rate, delta/2, model)
-        
+                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model)
+
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
@@ -512,7 +513,7 @@ class PDMP:
         selected_output_inv = torch.gather(output, 2, final_indices_inv)
         return selected_output, selected_output_inv
 
-    def training_losses_zigzag(self, model, X_t, V_t, t):
+    def training_losses_zigzag(self, model, X_t, V_t, t, subsamples = 5):
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
@@ -537,20 +538,24 @@ class PDMP:
         loss = 0
         # subusampling ceil(0.01 * d) components
         D = torch.prod(torch.tensor(V_t.shape[1:]))
-        subsamples = 5 #int(np.ceil(0.01 * D))
+        #subsamples = 5 #int(np.ceil(0.01 * D))
+        components_drawn = set()
         for i in range(subsamples):
             # Generate random coordinates for each data point in the batch
-            random_components = [torch.randint(0, s, (1,)) for s in V_t.shape[1:]]
+            random_components = tuple([torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
+            while (random_components in components_drawn) and (len(components_drawn) < D):
+                random_components = tuple([torch.randint(0, s, (1,))[0].item() for s in V_t.shape[1:]])
+            components_drawn.add(random_components)
             # Negate the values at the randomly chosen coordinates
             X_inv = X_t.detach().clone()
             V_inv = V_t.detach().clone()
-            V_inv[:, tuple(random_components)] *= -1
+            V_inv[:, *random_components] *= -1
             X_V_inv = torch.concat((X_inv, V_inv), dim = -1)
             output_inv = model(X_V_inv, t)
-            loss += g(output[:, tuple(random_components)])**2 + g(output_inv[:, tuple(random_components)])**2
-            loss -= 2*(g(output[:, tuple(random_components)]))
+            loss += g(output[:, *random_components])**2 + g(output_inv[:, *random_components])**2
+            loss -= 2*(g(output[:, *random_components]))
         loss = loss / subsamples
-        # invert time on component 1 and 2
+        #invert time on component 1 and 2
         #X_V_inv_t_0 = X_V_t.detach().clone() # clone to avoid modifying the original tensor, detach to avoid computing gradients on original tensor
         #X_V_inv_t_1 = X_V_t.detach().clone()
         #X_V_inv_t_0[:, :, 2] *= -1 # reverse speed on i = 1
@@ -579,12 +584,13 @@ class PDMP:
         # run the model
         #t = t.reshape(-1, *[1]*len(X_t.shape[1:]))
         #t = t.unsqueeze(-1).unsqueeze(-1)
-        X_t_t = X_t.reshape(X_t.shape[0], -1)
-        V_t_t = V_t.reshape(V_t.shape[0], -1)
-        t = t.reshape(-1, 1)
-        t = t.repeat(1, 32)
+        #X_t_t = X_t.reshape(X_t.shape[0], -1)
+        #V_t_t = V_t.reshape(V_t.shape[0], -1)
+        #t = t.reshape(-1, 1)
+        #t = t.repeat(1, 32)
         model = model.to(self.device)
-        output = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_t_t) #(X_V_t, t)
+        output = model(X_t, V_t, t)
+        #output = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_t_t) #(X_V_t, t)
         #model.eval()
         #with torch.inference_mode():
         #    output_sample = model(torch.cat([X_t_t, t], dim = -1)).sample()
@@ -604,8 +610,9 @@ class PDMP:
             log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))
             V = torch.randn_like(V_t)
             log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))
-            V_reshape = V.reshape(V.shape[0], -1)
-            output_V = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_reshape) #(X_V_t, t)
+            #V_reshape = V.reshape(V.shape[0], -1)
+            output_V = model(X_t, V, t) #(X_V_t, t)
+            #output_V = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_reshape) #(X_V_t, t)
         if 'square' in self.add_losses:
             ## square loss: tends not to work well in my experience
             loss += torch.exp(2*(log_nu_V_t -output)) 
@@ -635,9 +642,10 @@ class PDMP:
 
         # run the model
         # output = model(X_V_t, t)
-        t = t.reshape(-1, *[1]*len(X_t.shape[1:]))
+        #t = t.reshape(-1, *[1]*len(X_t.shape[1:]))
         #t = t.unsqueeze(-1).unsqueeze(-1)
-        output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t)
+        #output = model(torch.cat([X_t, t], dim = -1)).log_prob(V_t)
+        output = model(X_t, V_t, t)
         loss = 0
 
         possible_losses_bps = ['ml', 'hyvarinen', 'square', 'kl', 'logistic']
@@ -653,16 +661,18 @@ class PDMP:
             norms_x = torch.sum(X_t**2,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
             RV_t = V_t - 2*scal_prod * X_t / norms_x
             RV_t = RV_t.detach().clone()
-            output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t)
+            output_reflected = model(X_t, RV_t, t)
+            #output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t)
             def g(x):
                 return 1 / (1+x)
             loss += g(torch.exp(output-output_reflected))**2
         if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
             #### adding some loss for the refreshment ratio
-            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape)))).unsqueeze(-1)
+            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))#.unsqueeze(-1)
             V = torch.randn_like(V_t)
-            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape)))).unsqueeze(-1)
-            output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
+            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))#.unsqueeze(-1)
+            output_V = model(X_t, V, t)
+            #output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
         if 'square' in self.add_losses:
             ## square loss: tends not to work well in my experience
             loss += torch.exp(2*(log_nu_V_t - output)) 
@@ -701,7 +711,9 @@ class PDMP:
         return loss
     
 
-    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None):
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None):
+        assert subsamples is not None
+
                 # generate random speed
         #if V_batch is None:
         #    if self.sampler == 'ZigZag':
@@ -751,7 +763,7 @@ class PDMP:
         assert not (t != 0.).any()
 
         if self.sampler == 'ZigZag':
-            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons)
+            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons, subsamples=subsamples)
         elif self.sampler == 'HMC':
             losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons)
         elif self.sampler =='BPS':

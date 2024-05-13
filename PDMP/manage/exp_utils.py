@@ -21,6 +21,7 @@ import PDMP.models.unet as unet
 import PDMP.evaluate.Eval as Eval
 import PDMP.manage.Generate as Gen
 from PDMP.datasets import inverse_affine_transform
+import PDMP.models.NormalizingFlow as NormalizingFLow
 
 
 ''''''''''' FILE MANIPULATION '''''''''''
@@ -240,20 +241,26 @@ def init_model_by_parameter(p):
                                              noising_process=method)
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
-            model = zuko.flows.NSF(p['data']['dim'], # generates V_t
-                                   p['data']['dim'] + 1,  # takes X_t, t as conditioning
-                                   transforms=model_param['transforms'], #3, 
-                                   hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
+            model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+                                                         device=p['device'], 
+                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
+            #model = zuko.flows.NSF(p['data']['dim'], # generates V_t
+            #                       p['data']['dim'] + 1,  # takes X_t, t as conditioning
+            #                       transforms=model_param['transforms'], #3, 
+            #                       hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     else:
         if method in ['diffusion', 'ZigZag']:
             model = _unet_model(p, p_model_unet = model_param)
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             data_dim = p['data']['image_size']**2 * p['data']['channels']
-            model = zuko.flows.NSF(data_dim, # generates V_t
-                                   data_dim + 16,  # takes X_t, t as conditioning
-                                   transforms=model_param['transforms'], #3, 
-                                   hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
+            model = NormalizingFLow.NormalizingFlowModel(nfeatures=data_dim, 
+                                                         device=p['device'], 
+                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
+            #model = zuko.flows.NSF(data_dim, # generates V_t
+            #                       data_dim + 16,  # takes X_t, t as conditioning
+            #                       transforms=model_param['transforms'], #3, 
+            #                       hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     return model.to(p['device'])
 
 

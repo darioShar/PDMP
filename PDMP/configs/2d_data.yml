@@ -95,12 +95,15 @@ model:
     transforms: 3
     hidden_width: 256
     hidden_depth: 8
+    time_emb_type: concatenate
+    time_emb_size: 1
 
 training:
   pdmp:
     ema_rates: null
     #- 0.9
     grad_clip: null #1.0
+    subsamples: 5 # for ZigZag
   diffusion:
     ema_rates: null
     #- 0.9

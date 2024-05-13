@@ -45,3 +45,6 @@ for i in $(seq 0 $(( ${#time_horizon[@]} - 1)) ) ; do
         python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_$exp_number --epochs $epochs --eval 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
     done
 done
+
+
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_$exp_number --epochs $epochs --eval 50 --time_horizon ${time_horizon[${i}]} --reverse_steps 100 --exponent 5 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss
