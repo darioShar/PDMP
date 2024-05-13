@@ -83,7 +83,9 @@ class PDMP:
                 x -= v * delta / 2 # x - v * δ / 2
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
-                                    (torch.ones(x.shape[0])*time_mid).to(self.device))
+                                    (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :x.shape[-1]]
+                print('x', x.shape)
+                print('density_ratio', density_ratio.shape)
                 #output = model(x.to(self.device), (torch.ones(x.shape[0])*time_mid).to(self.device))
                 #density_ratio, selected_output_inv = self.get_densities_from_mlp_output(output, v.to(self.device))
                 #print(density_ratio.mean(dim=0))
@@ -266,18 +268,18 @@ class PDMP:
 
                 ## full implementation
                 time_mid = time - delta/ 2
-                scal_prod = torch.sum(v * x, dim = list(range(2, len(x.shape)))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                scal_prod = torch.sum(v * x, dim = list(range(1, len(x.shape))))
+                scal_prod_elements = scal_prod.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
                 # print("scal_prod", scal_prod.shape)
-                norm_x = torch.sum(x**2,dim = list(range(2, len(x.shape)))).reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
-                v_reflect = v - 2*scal_prod*x/norm_x
+                norm_x = torch.sum(x**2,dim = list(range(1, len(x.shape))))
+                norm_x_elements = norm_x.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
+                v_reflect = v - 2*x*scal_prod_elements/norm_x_elements
                 # print(v_reflect.shape)
                 t = time_mid * torch.ones(x.shape[0]).to(self.device)#.reshape(-1, *[1]*len(x.shape[1:]))
                 log_p_t_refl = model(x, v_reflect, t)#.squeeze(-1) #[:, :, :2]
                 # print("switchrate ",switch_rate.shape)
                 t = time_mid * torch.ones(x.shape[0]).to(self.device)#reshape(-1, *[1]*len(x.shape[1:])).
                 log_p_t = model(x, v, t)
-                scal_prod = scal_prod[...,0].squeeze(-1)
-                # print(scal_prod.shape)
                 switch_rate = torch.maximum(-scal_prod,torch.zeros(scal_prod.shape).to(self.device)).to(self.device)
                 switch_rate *= torch.exp(log_p_t_refl-log_p_t)
                 switch_rate[switch_rate == 0.] += 1e-9

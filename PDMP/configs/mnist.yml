@@ -6,7 +6,7 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 512 # batch size
+  bs: 128 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
