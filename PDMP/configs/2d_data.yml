@@ -97,6 +97,8 @@ model:
     hidden_depth: 8
     time_emb_type: concatenate
     time_emb_size: 1
+    x_emb_size: 2
+    x_emb_type: concatenate
 
 training:
   pdmp:

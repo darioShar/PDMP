@@ -35,6 +35,11 @@ def hash_parameters(p):
     # check that different samplers give different hashes!!!!
     # wtf
     model_param = model_param_to_use(p)
+    print('attention: retro-compatibility with normalizing flow in hash parameter')
+    if 'x_emb_type' in model_param:
+        del model_param['x_emb_type']
+    if 'x_emb_size' in model_param:
+        del model_param['x_emb_size']
     to_hash = {'data': {k:v for k, v in p['data'].items() if k in ['dataset', 'channels', 'image_size']},
                p['noising_process']: {k:v for k, v in p[p['noising_process']].items()},
                'model': model_param,
@@ -241,6 +246,9 @@ def init_model_by_parameter(p):
                                              noising_process=method)
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
+            print('retro_compatibility: default values for 2d data when loading model')
+            p['model']['normalizing_flow']['x_emb_type'] = 'concatenate'
+            p['model']['normalizing_flow']['x_emb_size'] = 2
             model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                          device=p['device'], 
                                                          p_model_normalizing_flow=p['model']['normalizing_flow'])

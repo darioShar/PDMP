@@ -32,22 +32,22 @@ conda activate diffusion
 # first train the models
 
 epochs=300
-exp_number=3
+exp_number=0
 
 samplers=('BPS' 'HMC' 'ZigZag')
 exponent=(1 2 5 8)
 time_horizon=(2 5 10)
 reverse_steps=(20 50 100)
 for i in $(seq 0 $(( ${#time_horizon[@]} - 1)) ) ; do
-    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss
-    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss
-    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --resume
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --resume
+    python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --check 50 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --resume
     for j in $(seq 0 $(( ${#reverse_steps[@]}-1)) ) ; do
-        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --eval $epochs --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss
-        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --eval $epochs --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss
-        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs $epochs --eval $epochs --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
+        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs 600 --eval 600 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss
+        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs 600 --eval 600 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss
+        python ./eval_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_$exp_number --epochs 600 --eval 600 --time_horizon ${time_horizon[${i}]} --reverse_steps ${reverse_steps[${j}]} --exponent ${exponent[$SLURM_ARRAY_TASK_ID]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss
     done
 done
 
-
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_0 --epochs 300 --check 50 --time_horizon 5 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --resume
 #python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_$exp_number --epochs $epochs --eval 50 --time_horizon ${time_horizon[${i}]} --reverse_steps 100 --exponent 5 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss

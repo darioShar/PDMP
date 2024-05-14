@@ -138,6 +138,12 @@ def update_parameters_before_loading(p, args):
         p['model']['normalizing_flow']['time_emb_size'] = args.embedding_size
         p['model']['mlp']['time_emb_size'] = args.embedding_size
 
+    if args.x_embedding_type is not None:
+        p['model']['normalizing_flow']['x_emb_type'] = args.x_embedding_type
+
+    if args.x_embedding_size is not None:
+        p['model']['normalizing_flow']['x_emb_size'] = args.x_embedding_size
+        
     return p
 
 def update_experiment_after_loading(exp, args):
@@ -218,6 +224,8 @@ def parse_args():
     parser.add_argument('--width', help='choose width in neural spline flow', default = None, type = int)
     parser.add_argument('--embedding_type', help='choose time embedding type', default = None, type = str)
     parser.add_argument('--embedding_size', help='choose time embedding size', default = None, type = int)
+    parser.add_argument('--x_embedding_type', help='choose x embedding type', default = None, type = str)
+    parser.add_argument('--x_embedding_size', help='choose x embedding size', default = None, type = int)
 
 
     # now for pdmp

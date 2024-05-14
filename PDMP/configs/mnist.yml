@@ -84,7 +84,7 @@ model:
     time_emb_size: 64
     time_emb_type: learnable
     x_emb_size: 1024
-    x_emb_type: mlp
+    x_emb_type: unet
 
 training:
   pdmp:
@@ -114,5 +114,5 @@ optim:
 run:
   epochs: 50
   eval_freq: null
-  checkpoint_freq: 5
+  checkpoint_freq: 25
   progress: true # print progress bar
