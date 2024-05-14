@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --partition=gpu          # Name of the partition
-#SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+#SBATCH --gres=gpu:rtx8000:1     # GPU nodes are only available in gpu partition
 #SBATCH --exclude=gpu01[2-3]        # exclude some nodes
 #SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
 #SBATCH --mem=20G                # Total memory allocated
@@ -26,20 +26,19 @@ module load cuda/11.4.0
 source /home/$USER/.bashrc
 conda activate diffusion
 
-#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 5 --exponent 5 --depth 8 --width 256
-#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 5 --exponent 5 --depth 8 --width 1024
-#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 5 --exponent 5 --depth 16 --width 256
-#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 5 --exponent 5 --depth 16 --width 1024
 
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 20 --time_horizon 5 --exponent 5 --depth 8 --width 256 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 20 --time_horizon 5 --exponent 5 --depth 8 --width 1024 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 20 --time_horizon 5 --exponent 5 --depth 16 --width 256 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 20 --time_horizon 5 --exponent 5 --depth 16 --width 1024 --ema_eval
+#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 6 --exponent 3 --depth 8 --width 4096 --embedding_type learnable --embedding_size 512 --log
+python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 100 --eval 100 --ml_loss --log --reverse_steps 150 --time_horizon 6 --exponent 3 --depth 8 --width 1024 --embedding_type learnable --embedding_size 512 --log --ema_eval
 
 
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 5 --exponent 5 --depth 8 --width 256 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 5 --exponent 5 --depth 8 --width 1024 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 5 --exponent 5 --depth 16 --width 256 --ema_eval
-#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 5 --exponent 5 --depth 16 --width 1024 --ema_eval
+#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 8 --width 256
+#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 8 --width 1024
+#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 16 --width 256
+#python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 10 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 16 --width 1024
+
+#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 8 --width 256 --ema_eval
+#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 8 --width 1024 --ema_eval
+#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 16 --width 256 --ema_eval
+#python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --eval 100 --ml_loss --log --reverse_steps 100 --time_horizon 6 --exponent 3 --depth 16 --width 1024 --ema_eval
 
 #python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 55 --eval 55 --ml_loss --ema_eval --log --reverse_steps 100 --time_horizon 3

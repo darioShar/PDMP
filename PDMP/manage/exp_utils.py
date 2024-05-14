@@ -256,7 +256,8 @@ def init_model_by_parameter(p):
             data_dim = p['data']['image_size']**2 * p['data']['channels']
             model = NormalizingFLow.NormalizingFlowModel(nfeatures=data_dim, 
                                                          device=p['device'], 
-                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
+                                                         p_model_normalizing_flow=p['model']['normalizing_flow'],
+                                                         unet=_unet_model(p, p_model_unet=p['model']['unet']))
             #model = zuko.flows.NSF(data_dim, # generates V_t
             #                       data_dim + 16,  # takes X_t, t as conditioning
             #                       transforms=model_param['transforms'], #3, 

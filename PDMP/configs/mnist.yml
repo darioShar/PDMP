@@ -6,7 +6,7 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 128 # batch size
+  bs: 256 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -78,16 +78,20 @@ model:
     num_res_blocks: 2
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 3
-    hidden_width: 256 # 2048
-    hidden_depth: 9
-
+    transforms: 5
+    hidden_width: 1024 # 2048
+    hidden_depth: 8
+    time_emb_size: 8
+    time_emb_type: learnable
+    x_emb_size: 256
+    x_emb_type: mlp
 
 training:
   pdmp:
     ema_rates:
     - 0.99
     grad_clip: null #1.0
+    subsamples: 5 # for ZigZag
   diffusion:
     ema_rates: 
     - 0.99
@@ -100,11 +104,11 @@ training:
 
 optim:
   optimizer: adamw
-  schedule: null #steplr
-  lr: 0.0001
-  warmup: 0 #100
+  schedule: steplr #steplr
+  lr: 0.001
+  warmup: 50 #100
   lr_steps: 300000
-  lr_step_size: 100
+  lr_step_size: 150
   lr_gamma: 0.99
 
 run:
