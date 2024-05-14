@@ -81,9 +81,9 @@ model:
     transforms: 5
     hidden_width: 1024 # 2048
     hidden_depth: 8
-    time_emb_size: 8
+    time_emb_size: 64
     time_emb_type: learnable
-    x_emb_size: 256
+    x_emb_size: 1024
     x_emb_type: mlp
 
 training:
