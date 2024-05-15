@@ -4,13 +4,13 @@
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --partition=cpu_homogen          # Name of the partition
+#SBATCH --partition=cpu_dist          # Name of the partition
 ## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
-#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --time=24:00:00          # total run time limit (HH:MM:SS)
 #SBATCH --mem=24G                # Total memory allocated
 # ### ### SBATCH --hint=multithread       # we get physical cores not logical
 #SBATCH --output=./log/%x_%j.out   # output file name
-#SBATCH --array=1-3              # job array index
+#SBATCH --array=0-3              # job array index
 
 echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
 
@@ -18,10 +18,10 @@ set -x
 cd ${SLURM_SUBMIT_DIR}
 
 module purge
-module load cuda/11.4.0
+module load anaconda3 cuda/11
 
 source /home/$USER/.bashrc
-conda activate diffusion
+conda activate pdmp
 
 
 exp_number=0
@@ -29,19 +29,13 @@ exp_number=0
 epochs=1000
 folder="cleps/experiment_toy_data"
 
-# we must use the same add_losses for run and eval.
 
 datasets=('rose' 'olympic_rings' 'fractal_tree' 'checkerboard')
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
+#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 1000 --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process diffusion --blocks 8 --units 256
 
-
-#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
-#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 1000 --noising_process diffusion --blocks 8 --units 256
 
 # now evaluate last models with varying reverse_steps
 #reverse_steps=(50 100 250 1000)
