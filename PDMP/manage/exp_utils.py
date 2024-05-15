@@ -243,9 +243,9 @@ def init_model_by_parameter(p):
                                              noising_process=method)
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
-            print('retro_compatibility: default values for 2d data when loading model')
-            p['model']['normalizing_flow']['x_emb_type'] = 'concatenate'
-            p['model']['normalizing_flow']['x_emb_size'] = 2
+            #print('retro_compatibility: default values for 2d data when loading model')
+            #p['model']['normalizing_flow']['x_emb_type'] = 'concatenate'
+            #p['model']['normalizing_flow']['x_emb_size'] = 2
             model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                          device=p['device'], 
                                                          p_model_normalizing_flow=p['model']['normalizing_flow'])

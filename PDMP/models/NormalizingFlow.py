@@ -49,7 +49,8 @@ class NormalizingFlowModel(nn.Module):
         self.device =           device
         
         assert self.time_emb_type in self.possible_time_embeddings
-        
+        assert self.x_emb_type in self.possible_x_embeddings
+
         self.act = nn.SiLU(inplace=False)
         
         # manage time embedding type

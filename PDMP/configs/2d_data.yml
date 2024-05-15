@@ -98,7 +98,7 @@ model:
     time_emb_type: learnable
     time_emb_size: 16
     x_emb_size: 16
-    x_emb_type: learnable
+    x_emb_type: mlp
 
 training:
   pdmp:

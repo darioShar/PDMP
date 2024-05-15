@@ -38,18 +38,18 @@ epochs=300
 
 # we must use the same add_losses for run and eval.
 
-python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256 --time_horizon 5
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256 --time_horizon 5
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256 --time_horizon 5
 python ./run_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval 50 --check $epochs --reverse_steps 100 --noising_process diffusion --blocks 8 --units 256
 
 # now evaluate last models with varying reverse_steps
-reverse_steps=(2 3 5 10 20 30 50 75 100 150)
-for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
+#reverse_steps=(2 3 5 10 20 30 50 75 100 150)
+#for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
     # pdmp
-    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
+#    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
+#    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
+#    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
     # diffusion
-    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion --blocks 8 --units 256
-done
+#    python ./eval_pdmp.py --config 2d_data --name cleps/experiment_final_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion --blocks 8 --units 256
+#done
