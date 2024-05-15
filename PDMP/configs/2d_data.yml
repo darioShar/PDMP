@@ -97,7 +97,7 @@ model:
     hidden_depth: 8
     time_emb_type: learnable
     time_emb_size: 16
-    x_emb_size: 16
+    x_emb_size: 256
     x_emb_type: mlp
 
 training:
