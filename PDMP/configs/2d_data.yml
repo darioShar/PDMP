@@ -61,7 +61,7 @@ eval:
 
   pdmp:
     backward_scheme: splitting # euler
-    reverse_steps: 1000 # reverse_steps are only part of evaluation, not of the training
+    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
     exponent: 2 # might need to remove that for hashes to match afterwards.
     get_sample_history: true
     #clip_denoised: false
