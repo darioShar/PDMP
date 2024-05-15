@@ -35,14 +35,11 @@ def hash_parameters(p):
     # check that different samplers give different hashes!!!!
     # wtf
     model_param = model_param_to_use(p)
-    print('attention: retro-compatibility with normalizing flow in hash parameter')
-    if 'x_emb_type' in model_param:
-        del model_param['x_emb_type']
-    if 'x_emb_size' in model_param:
-        del model_param['x_emb_size']
+    #print('attention: retro-compatibility with normalizing flow in hash parameter')
+    retro_compatibility = []#['x_emb_type', 'x_emb_size']
     to_hash = {'data': {k:v for k, v in p['data'].items() if k in ['dataset', 'channels', 'image_size']},
                p['noising_process']: {k:v for k, v in p[p['noising_process']].items()},
-               'model': model_param,
+               'model':  {k:v for k, v in model_param.items() if not k in retro_compatibility}, # here retro-compatibility
                #'optim': p['optim'],
                #'training': p['training']
                }

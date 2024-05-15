@@ -89,7 +89,7 @@ class GenerationManager:
     
     def get_plot(self, 
                  plot_original_data = True, 
-                 limit_nb_orig_data = 2000,
+                 limit_nb_orig_data = 10000,
                 xlim = None, ylim = None,
                 title= None):
         
@@ -100,7 +100,7 @@ class GenerationManager:
         fig = plt.figure()
         if plot_original_data:
             self._plot_data(original_data, limit_nb_orig_data)
-        self._plot_data(gen_data[:limit_nb_orig_data], marker='+')
+        self._plot_data(gen_data[:limit_nb_orig_data])#, marker='+')
         if xlim is not None:
             plt.xlim(xlim) 
         if ylim is not None:
@@ -114,15 +114,15 @@ class GenerationManager:
         plt.close(fig)
         return fig
     
-    def _plot_data(self, data, limit=None, marker=None, animated=False):
+    def _plot_data(self, data, limit=None, marker=',', animated=False):
         if limit is not None:
             limit = data.shape[0]
         if data.shape[1] == 1:
             fig = plt.scatter(data[:limit, 0], torch.zeros(data.shape[0]), 
-                        marker=marker, alpha = .5, animated=animated)
+                        marker=marker, alpha = .5, lw=0, s=1, animated=animated)
         else:
             fig = plt.scatter(data[:limit, 0], data[:limit, 1], 
-                        marker=marker, alpha=0.5, animated = animated)
+                        marker=marker, alpha=0.5, lw=0, s=1, animated = animated)
         return fig
     
     def load_original_data(self, nsamples):

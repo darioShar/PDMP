@@ -29,6 +29,35 @@ def unpickle(file):
         dict = pickle.load(fo)
     return dict
 
+
+def inf_train_gen(img_name, data_size):
+    def gen_data_from_img(image_mask, train_data_size):
+        def sample_data(train_data_size):
+            inds = np.random.choice(
+                int(probs.shape[0]), int(train_data_size), p=probs)
+            m = means[inds] 
+            samples = np.random.randn(*m.shape) * std + m 
+            return samples
+        img = image_mask
+        h, w = img.shape
+        xx = np.linspace(-4, 4, w)
+        yy = np.linspace(-4, 4, h)
+        xx, yy = np.meshgrid(xx, yy)
+        xx = xx.reshape(-1, 1)
+        yy = yy.reshape(-1, 1)
+        means = np.concatenate([xx, yy], 1) # (h*w, 2)
+        img = img.max() - img
+        probs = img.reshape(-1) / img.sum() 
+        std = np.array([8 / w / 2, 8 / h / 2])
+        full_data = sample_data(train_data_size)
+        return full_data
+    image_mask = np.array(Image.open(f'{img_name}.png').rotate(
+        180).transpose(0).convert('L'))
+    dataset = gen_data_from_img(image_mask, data_size)
+    return dataset / 4
+
+
+
 class Crop(object):
     def __init__(self, x1, x2, y1, y2):
         self.x1 = x1
@@ -65,6 +94,12 @@ image_datasets = [
     "FFHQ",
 ]
 
+toy_datasets = [
+    "rose",
+    "fractal_tree",
+    'olympic_rings',
+    'checkerboard'
+]
 def is_image_dataset(name):
     return name.upper() in [x.upper() for x in image_datasets]
 
@@ -82,9 +117,11 @@ def get_dataset(p):
     config = dict2namespace(p)
 
     assert (config.data.dataset.upper() in [x.upper() for x in image_datasets]) \
-        or (config.data.dataset.upper() in [x.upper() for x in Data.Generator.available_distributions]), \
-        "Dataset not available: {}.\nCan choose from:\n(Image)\t{}\n(2d data)\t{}".format(config.data.dataset,
+        or (config.data.dataset.upper() in [x.upper() for x in Data.Generator.available_distributions]) \
+        or (config.data.dataset.lower() in [x.lower() for x in toy_datasets]), \
+        "Dataset not available: {}.\nCan choose from:\n(Image)\t{}\n(Toy)\t{}\n(2d data)\t{}".format(config.data.dataset,
                                                                                           image_datasets,
+                                                                                          toy_datasets,
                                                                                           Data.Generator.available_distributions)
     
     if config.data.dataset.lower() in [x.lower() for x in Data.Generator.available_distributions]:
@@ -122,6 +159,22 @@ def get_dataset(p):
         test_dataset = TensorDataset(copy.deepcopy(data_gen.samples), torch.tensor([0.]).repeat(data_gen.samples.shape[0]))
         return dataset, test_dataset
 
+
+    if config.data.dataset.lower() in [x.lower() for x in toy_datasets]:
+        xraw = inf_train_gen(os.path.join(DATA_PATH, 
+                                          'toy', 
+                                          "img_{}".format(config.data.dataset.lower())),
+                              config.data.nsamples)
+        xte = inf_train_gen(os.path.join(DATA_PATH, 
+                                          'toy', 
+                                          "img_{}".format(config.data.dataset.lower())),
+                              config.data.nsamples)
+        xraw = torch.from_numpy(xraw).float().unsqueeze(1)
+        xte = torch.from_numpy(xte).float().unsqueeze(1)
+        dataset = torch.utils.data.TensorDataset(xraw, torch.tensor([0.]).repeat(xraw.shape[0]))
+        test_dataset = torch.utils.data.TensorDataset(xte, torch.tensor([0.]).repeat(xte.shape[0]))
+        return dataset, test_dataset
+    
     config.data.dataset = config.data.dataset.upper()
     
     if config.data.dataset == "CIFAR10":

@@ -4,13 +4,13 @@ data:
   between_minus_1_1: true
   quantile_cutoff: 0.99999
   data_alpha: 2.0
-  dataset: gmm_grid #gmm_grid # sas_grid
+  dataset: rose #gmm_grid # sas_grid
   isotropic: true
   n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: true #true
-  nsamples: 32000
-  bs: 4000 # batch size
+  nsamples: 100000
+  bs: 4096 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.05
   theta: 1.
@@ -55,20 +55,20 @@ pdmp:
   #- logistic
 
 eval:
-  data_to_generate: 15000
+  data_to_generate: 10000
   batch_size: 128
   real_data: 10000 # in case of images, number of real images to store and to compare to
 
   pdmp:
     backward_scheme: splitting # euler
-    reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
+    reverse_steps: 1000 # reverse_steps are only part of evaluation, not of the training
     exponent: 2 # might need to remove that for hashes to match afterwards.
     get_sample_history: true
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
   diffusion:
-    reverse_steps: 100
+    reverse_steps: 1000
     clip_denoised: false
     ddim: false
     eta: 1.0
@@ -85,9 +85,9 @@ model:
     group_norm: true
     nblocks: 8
     no_a: true
-    nunits: 64
+    nunits: 256
     skip_connection: true
-    time_emb_size: 8
+    time_emb_size: 16
     time_emb_type: learnable
     use_a_t: false
   # this is for the other samplers; normalizing flows
@@ -95,17 +95,17 @@ model:
     transforms: 3
     hidden_width: 256
     hidden_depth: 8
-    time_emb_type: concatenate
-    time_emb_size: 1
-    x_emb_size: 2
-    x_emb_type: concatenate
+    time_emb_type: learnable
+    time_emb_size: 16
+    x_emb_size: 16
+    x_emb_type: learnable
 
 training:
   pdmp:
     ema_rates: null
     #- 0.9
     grad_clip: null #1.0
-    subsamples: 5 # for ZigZag
+    subsamples: 2 # for ZigZag
   diffusion:
     ema_rates: null
     #- 0.9
@@ -125,7 +125,7 @@ optim:
   lr_gamma: 0.99
 
 run:
-  epochs: 300
-  eval_freq: 50
-  checkpoint_freq: null
+  epochs: 1000
+  eval_freq: 100
+  checkpoint_freq: 500
   progress: true # print progress bar

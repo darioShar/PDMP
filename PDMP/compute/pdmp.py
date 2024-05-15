@@ -131,8 +131,8 @@ class PDMP:
         
         data_shape = x_init.shape
         # flatten
-        x_init = x_init.reshape(x_init.shape[0], -1)
-        v_init = v_init.reshape(v_init.shape[0], -1)
+        #x_init = x_init.reshape(x_init.shape[0], -1)
+        #v_init = v_init.reshape(v_init.shape[0], -1)
 
         x = x_init.clone()
         v = v_init.clone()
@@ -143,7 +143,8 @@ class PDMP:
                 delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
                 if get_sample_history:
                     # don't forget to unflatten data
-                    chain.append(torch.concat((x.reshape(*data_shape), v.reshape(*data_shape)), dim = -1))
+                    #chain.append(torch.concat((x.reshape(*data_shape), v.reshape(*data_shape)), dim = -1))
+                    chain.append(torch.concat((x, v), dim = -1))
                 # compute x_n-1 from x_n
                 x_init = x.clone()
                 v_init = v.clone()
@@ -180,8 +181,8 @@ class PDMP:
                 #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
 
         # unflatten
-        x = x.reshape(*data_shape)
-        v = v.reshape(*data_shape)        
+        #x = x.reshape(*data_shape)
+        #v = v.reshape(*data_shape)
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)

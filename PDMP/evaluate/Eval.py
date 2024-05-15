@@ -7,6 +7,7 @@ from .wasserstein import compute_wasserstein_distance
 from .prd_legacy import compute_precision_recall_curve, compute_f_beta
 import os 
 from pathlib import Path
+from .mmd_loss import get_MMD, MMD_loss, MMD
 
 def check_dict_eq(dic1, dic2):
     for k, v in dic1.items():
@@ -56,6 +57,7 @@ class Eval:
             'losses': self.evals['losses'] if keep_losses else np.array([], dtype = np.float32),
             'losses_batch': self.evals['losses_batch'] if keep_losses else np.array([], dtype = np.float32),
             'wass': self.evals['wass'] if keep_evals else [],
+            'mmd': self.evals['mmd'] if keep_evals else [],
             'precision': self.evals['precision'] if keep_evals else [],
             'recall': self.evals['recall'] if keep_evals else [],
             'density': self.evals['density'] if keep_evals else [],
@@ -118,15 +120,17 @@ class Eval:
             data = self.gen_manager.load_original_data(data_to_generate)
 
             print('wasserstein')
-            if self.is_image:
-                eval_results['wass'] = compute_wasserstein_distance(data, 
-                                                    gen_samples,
-                                                    manual_compute=True)
-            else:
-                eval_results['wass'] = compute_wasserstein_distance(data, 
+            #if self.is_image:
+            #    eval_results['wass'] = compute_wasserstein_distance(data, 
+            #                                        gen_samples,
+            #                                        manual_compute=True)
+            #else:
+            eval_results['wass'] = compute_wasserstein_distance(data, 
                                                     gen_samples, 
                                                     bins = 250 if data_to_generate >=512 else 'auto')
             print('wasserstein:', eval_results['wass'])
+
+            eval_results['mmd'] = MMD_loss()(data.squeeze(1), gen_samples.squeeze(1))#, kernel='rbf')#get_MMD(data, gen_samples, data[0].device)
 
             # scatter plot, simple 2d data.
             # precision/recall

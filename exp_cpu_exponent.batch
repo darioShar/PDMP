@@ -23,16 +23,12 @@ module load cuda/11.4.0
 source /home/$USER/.bashrc
 conda activate diffusion
 
-# Lp=('1.0' '1.5' '2.0')
 
-# we need to run BPS, HMC, ZigZag, diffusion on 2D data.
-# I want to compare end results
-# and I want to see how this scales with diffusion steps. We'll do that with eval_pdmp.py at the end. Let's go with 100 diffusion steps for everybody at first, with a simple 4-gmm
+# Get back from resume logic to initial runs.
 
-# first train the models
 
 epochs=300
-exp_number=0
+exp_number=3
 
 samplers=('BPS' 'HMC' 'ZigZag')
 exponent=(1 2 5 8)
@@ -49,5 +45,5 @@ for i in $(seq 0 $(( ${#time_horizon[@]} - 1)) ) ; do
     done
 done
 
-python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_0 --epochs 300 --check 50 --time_horizon 5 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --resume
+#python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_fixed_0 --epochs 300 --check 50 --time_horizon 5 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --resume
 #python ./run_pdmp.py --config 2d_data --name cleps/experiment_exponent_$exp_number --epochs $epochs --eval 50 --time_horizon ${time_horizon[${i}]} --reverse_steps 100 --exponent 5 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss

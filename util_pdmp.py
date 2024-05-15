@@ -81,6 +81,10 @@ def update_parameters_before_loading(p, args):
     if args.reverse_steps is not None:
         p['eval'][p['noising_process']]['reverse_steps'] = args.reverse_steps
 
+
+    if args.dataset is not None:
+        p['data']['dataset'] = args.dataset
+
     # Now for pdmp
     if args.sampler is not None:
         p['pdmp']['sampler'] = args.sampler
@@ -215,6 +219,7 @@ def parse_args():
     parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
     parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
+    parser.add_argument('--dataset', help='choose specific dataset', default = None, type = str)
 
     #model
     parser.add_argument('--blocks', help='choose number of blocks in mlp', default = None, type = int)
