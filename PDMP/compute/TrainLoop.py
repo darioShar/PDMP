@@ -40,7 +40,7 @@ class TrainLoop:
         else:
             progress_batch = lambda x : x
         
-        train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
+        #train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
         #['VAE']*5 + ['NORMAL']*2 + ['NORMAL_WITH_VAE']*1 + ['NORMAL']*2
 
         for epoch in range(nepochs):
@@ -55,7 +55,7 @@ class TrainLoop:
 
                 loss = noising_process.training_losses(model, 
                                                        Xbatch, 
-                                                       train_type=train_procedure[self.total_steps % len(train_procedure)], 
+                                                       train_type=['NORMAL'],#train_procedure[self.total_steps % len(train_procedure)], 
                                                        model_vae=model_vae, 
                                                        **kwargs)
 
