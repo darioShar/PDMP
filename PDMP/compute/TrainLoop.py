@@ -64,12 +64,14 @@ class TrainLoop:
                 #print('loss computed')
                 # and finally gradient descent
                 optimizer.zero_grad()
-                optimizer_vae.zero_grad()
+                if optimizer_vae is not None:
+                    optimizer_vae.zero_grad()
                 loss.backward()
                 if grad_clip is not None:
                     nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
-                optimizer_vae.step()
+                if optimizer_vae is not None:
+                    optimizer_vae.step()
                 if learning_schedule is not None:
                     learning_schedule.step()
                 if learning_schedule_vae is not None:
