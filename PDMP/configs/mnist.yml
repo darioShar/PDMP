@@ -80,13 +80,13 @@ model:
     num_res_blocks: 2
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 12
-    hidden_width: 256 # 2048
+    transforms: 24
+    hidden_width: 1024 # 2048
     hidden_depth: 4
     time_emb_size: 32
     time_emb_type: learnable
-    x_emb_size: 1024
-    x_emb_type: unet
+    x_emb_size: 32
+    x_emb_type: mlp # mlp, unet
   vae: false
 
 training:

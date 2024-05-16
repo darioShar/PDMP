@@ -140,13 +140,13 @@ def update_parameters_before_loading(p, args):
     if args.width is not None:
         p['model']['normalizing_flow']['hidden_width'] = args.width
 
-    if args.embedding_type is not None:
-        p['model']['normalizing_flow']['time_emb_type'] = args.embedding_type
-        p['model']['mlp']['time_emb_type'] = args.embedding_type
+    if args.t_embedding_type is not None:
+        p['model']['normalizing_flow']['time_emb_type'] = args.t_embedding_type
+        p['model']['mlp']['time_emb_type'] = args.t_embedding_type
 
-    if args.embedding_size is not None:
-        p['model']['normalizing_flow']['time_emb_size'] = args.embedding_size
-        p['model']['mlp']['time_emb_size'] = args.embedding_size
+    if args.t_embedding_size is not None:
+        p['model']['normalizing_flow']['time_emb_size'] = args.t_embedding_size
+        p['model']['mlp']['time_emb_size'] = args.t_embedding_size
 
     if args.x_embedding_type is not None:
         p['model']['normalizing_flow']['x_emb_type'] = args.x_embedding_type
@@ -233,8 +233,8 @@ def parse_args():
     parser.add_argument('--transforms', help='choose number of transforms in neural spline flow', default = None, type = int)
     parser.add_argument('--depth', help='choose depth in neural spline flow', default = None, type = int)
     parser.add_argument('--width', help='choose width in neural spline flow', default = None, type = int)
-    parser.add_argument('--embedding_type', help='choose time embedding type', default = None, type = str)
-    parser.add_argument('--embedding_size', help='choose time embedding size', default = None, type = int)
+    parser.add_argument('--t_embedding_type', help='choose time embedding type', default = None, type = str)
+    parser.add_argument('--t_embedding_size', help='choose time embedding size', default = None, type = int)
     parser.add_argument('--x_embedding_type', help='choose x embedding type', default = None, type = str)
     parser.add_argument('--x_embedding_size', help='choose x embedding size', default = None, type = int)
 
