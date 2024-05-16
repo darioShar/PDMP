@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 import PDMP.compute.TrainLoop as TrainLoop
 import PDMP.models.Ema as Ema
 import copy
-from PDMP.manage.exp_utils import init_model_vae_by_parameter, \
-                                    init_ls_by_parameter,\
-                                    init_optimizer_by_parameter
 from PDMP.datasets import is_image_dataset
 
 #Wrapper around training and evaluation functions
@@ -26,6 +23,8 @@ class Manager:
                  eval,
                  logger = None,
                  ema_rates = None,
+                reset_vae = None,
+                 p = None,
                  **kwargs):
         self.train_loop = TrainLoop.TrainLoop()
         self.model = model
@@ -37,6 +36,8 @@ class Manager:
         self.learning_schedule = learning_schedule
         self.learning_schedule_vae = learning_schedule_vae
         self.eval = eval
+        self.reset_vae = reset_vae
+        self.p = p
         if ema_rates is None:
             self.ema_objects = None
         else:
@@ -71,9 +72,10 @@ class Manager:
             if np.isnan(batch_loss): 
                 if self.model_vae is not None:
                     print('reinitinizling model vae')
-                    self.model_vae = init_model_vae_by_parameter(self.p)
-                    self.optimizer_vae = init_optimizer_by_parameter(self.model_vae, self.p)
-                    self.learning_schedule_vae = init_ls_by_parameter(self.optimizer_vae, self.p)
+                    m, o, l = self.reset_vae(self.p)
+                    self.model_vae = m
+                    self.optimizer_vae = o
+                    self.learning_schedule_vae = l
                 else:
                     raise Exception('loss is nan')
             
@@ -93,7 +95,7 @@ class Manager:
             ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
             batch_callback = batch_callback,
             epoch_callback = epoch_callback,
-            is_image=is_image_dataset(self.p['data']['dataset'])
+            is_image=is_image_dataset(self.p['data']['dataset']),
             **tmp_kwargs)
 
 

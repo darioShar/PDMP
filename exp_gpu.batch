@@ -29,7 +29,7 @@ conda activate diffusion
 
 #python ./run_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 100 --eval 100 --ml_loss --log --reverse_steps 50 --time_horizon 6 --exponent 3 --depth 8 --width 4096 --embedding_type learnable --embedding_size 512 --log
 #python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 100 --eval 100 --ml_loss --log --reverse_steps 150 --time_horizon 6 --exponent 3 --depth 8 --width 1024 --embedding_type learnable --embedding_size 512 --log --ema_eval
-python ./run_pdmp.py --config mnist --name mnist_vae --epochs 100 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --vae --lr 0.0005 # --x_embedding_type unet --x_embedding_size 1024 --width 256
+python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_vae --epochs 150 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --vae --resume #--lr 0.0005 # --x_embedding_type unet --x_embedding_size 1024 --width 256
 #python ./eval_pdmp.py --config mnist --name mnist_vae --epochs 100 --eval 100 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log  --ema_eval --x_embedding_type unet --x_embedding_size 1024 --width 256
 
 

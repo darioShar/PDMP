@@ -44,6 +44,7 @@ class TrainLoop:
         #train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
         #['VAE']*5 + ['NORMAL']*2 + ['NORMAL_WITH_VAE']*1 + ['NORMAL']*2
 
+        freeze_vae = False
         for epoch in range(nepochs):
             epoch_loss = steps = 0
             for i, (Xbatch, y) in progress_batch(enumerate(dataloader)):
@@ -56,19 +57,14 @@ class TrainLoop:
                     Xbatch += 2*torch.rand_like(Xbatch) / (256)
 
                 if model_vae is not None:
-                    if self.epochs < 40:
+                    if self.epochs < 100:
                         train_type = ['VAE']
-
-                    elif self.epochs < 60:
-                        train_type = ['NORMAL']
-
                     else:
-                        if (self.total_steps % 3) == 0:
-                            train_type = ['NORMAL']
-                        if (self.total_steps % 3) == 1:
-                            train_type = ['NORMAL_WITH_VAE']
-                        if (self.total_steps % 3) == 2:
-                            train_type = ['VAE']    
+                        freeze_vae = True
+                        if (self.total_steps % 2) == 0:
+                            train_type = ['NORMAL'] 
+                        else:
+                            train_type = ['NORMAL_WITH_VAE'] 
                 else:
                     train_type = ['NORMAL']
                 loss = noising_process.training_losses(model, 
@@ -82,7 +78,7 @@ class TrainLoop:
                 #print('loss computed')
                 # and finally gradient descent
                 optimizer.zero_grad()
-                if optimizer_vae is not None:
+                if (optimizer_vae is not None) and (not freeze_vae):
                     optimizer_vae.zero_grad()
                 loss.backward()
                 if grad_clip is not None:
@@ -90,9 +86,9 @@ class TrainLoop:
                 optimizer.step()
                 if optimizer_vae is not None:
                     optimizer_vae.step()
-                if learning_schedule is not None:
+                if (learning_schedule is not None):
                     learning_schedule.step()
-                if learning_schedule_vae is not None:
+                if (learning_schedule_vae is not None) and (not freeze_vae):
                     learning_schedule_vae.step()
                 # update ema models
                 if ema_models is not None:

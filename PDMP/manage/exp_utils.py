@@ -382,6 +382,12 @@ def init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_
     )
     return eval
 
+def reset_vae(p):
+    model_vae = init_model_vae_by_parameter(p)
+    optim_vae = init_optimizer_by_parameter(model_vae, p) if model_vae is not None else None
+    learning_schedule_vae = init_ls_by_parameter(optim_vae, p) if model_vae is not None else None
+    return model_vae, optim_vae, learning_schedule_vae
+
 def init_manager_by_parameter(model,
                               model_vae,
                               data,
@@ -406,6 +412,8 @@ def init_manager_by_parameter(model,
                 learning_schedule_vae,
                 eval,
                 logger,
+                reset_vae=reset_vae,
+                p = p,
                 # ema_rate, grad_clip
                 **kwargs
                 )
@@ -459,7 +467,7 @@ def prepare_experiment(p, logger = None, do_not_load_data=False):
                                         learning_schedule,
                                         learning_schedule_vae,
                                         eval,
-                                        logger, 
+                                        logger,
                                         p)
     return model, data, test_data, manager
 
