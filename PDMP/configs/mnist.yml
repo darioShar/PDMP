@@ -41,6 +41,8 @@ eval:
   pdmp:
     backward_scheme: splitting # euler
     reverse_steps: 50 # reverse_steps are only part of evaluation, not of the training
+    get_sample_history: false
+
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
