@@ -44,7 +44,8 @@ class PDMP:
         v[event_time.sample() <= s] *= -1.
 
     def splitting_zzs_DBD(self, 
-                          model, 
+                          model,
+                          model_vae,
                           T, 
                           N, 
                           shape = None, 
@@ -137,6 +138,8 @@ class PDMP:
         x = x_init.clone()
         v = v_init.clone()
         model.eval()
+        if model_vae is not None:
+            model_vae.eval()
         with torch.inference_mode():
             for i in print_progession(range(int(N))):
                 time = timesteps[i]
@@ -193,7 +196,7 @@ class PDMP:
         event_time = torch.distributions.exponential.Exponential(lambdas)
         v[event_time < s] = v_reflect[event_time < s]
     
-    def splitting_BPS_RDBDR(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
+    def splitting_BPS_RDBDR(self, model, model_vae, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
@@ -217,6 +220,8 @@ class PDMP:
         x = x_init.clone()
         v = v_init.clone()
         model.eval()
+        if model_vae is not None:
+            model_vae.eval()
         with torch.inference_mode():
             for i in print_progession(range(int(N))):
                 time = timesteps[i]
@@ -234,7 +239,7 @@ class PDMP:
                 #log_p_t_model = log_p_t_model.squeeze(-1)
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
-                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model)
+                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model, model_vae)
 
                 # half a step D
                 x -= v * delta/2
@@ -301,14 +306,14 @@ class PDMP:
                 #log_p_t_model = log_p_t_model.squeeze(-1)
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 refresh_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
-                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model)
+                self.refresh_given_rate(x, v, t, refresh_rate, delta/2, model, model_vae)
 
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
         return torch.concat((x, v), dim = -1)
 
-    def BPS_gauss_1step_backward(self, x, v, time_horizon, time, ratio_refl, ratio_refresh, model):
+    def BPS_gauss_1step_backward(self, x, v, time_horizon, time, ratio_refl, ratio_refresh, model, model_vae):
 
         a = - v * x
         a = torch.sum(a, dim = list(range(2, len(x.shape)))).squeeze(-1)
@@ -332,7 +337,8 @@ class PDMP:
         mask = torch.logical_and(time_horizon > torch.minimum(Δt_reflections,Δt_refresh), Δt_refresh<Δt_reflections)
         ## fix dimensions of everything
         if torch.any(mask):
-            tmp = model(torch.cat(
+            nn_sample = model if model_vae is None else model_vae
+            tmp = nn_sample(torch.cat(
                 (x[mask],
                 (time * torch.ones(x[mask].shape[0], *([1]*len(x.shape[1:]))).to(self.device) + Δt_refresh[mask].reshape(-1, *([1]*len(x.shape[1:]))))),
                 dim = -1).to(self.device)
@@ -343,7 +349,7 @@ class PDMP:
         x -= v * time_horizons.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
 
 
-    def Euler_BPS(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history=False):
+    def Euler_BPS(self, model, model_vae, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history=False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
@@ -373,6 +379,7 @@ class PDMP:
         x = x_init.clone()
         v = v_init.clone()
         model.eval()
+        model_vae.eval()
         with torch.inference_mode():
             for i in print_progession(range(int(N))):
                 time = timesteps[i]
@@ -396,7 +403,7 @@ class PDMP:
                                                  dim = -1
                                                  ).to(self.device)).log_prob(v_reflect).squeeze(-1)
                 reflection_ratios = torch.exp(log_p_t_refl - log_p_t_model)
-                self.BPS_gauss_1step_backward(x, v, delta, time, reflection_ratios, refresh_ratios, model)
+                self.BPS_gauss_1step_backward(x, v, delta, time, reflection_ratios, refresh_ratios, model, model_vae)
 
 
         if get_sample_history:
@@ -584,8 +591,7 @@ class PDMP:
         # 'VAE': only train the vae
         # 'RATIO': if model_vae is given, trains the ratio with true v_t replaced by vae sample
         # 'RATIO': if model_vae is not given, trains the ratio with true v_t
-        for type in train_type:
-            assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
+
         
         # send to device
         X_t = X_t.to(self.device)
@@ -670,7 +676,8 @@ class PDMP:
         #    print('output sample:', output_sample[0])
         #model.train()
 
-    def training_loss_bps(self, model, X_t, V_t, t):
+    def training_loss_bps(self, model, X_t, V_t, t, train_type=None, model_vae=None):
+        #assert (model_vae is None), 'VAE is not implemented for BPS'
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
@@ -689,43 +696,72 @@ class PDMP:
         output = model(X_t, V_t, t)
         loss = 0
 
-        possible_losses_bps = ['ml', 'hyvarinen', 'square', 'kl', 'logistic']
-        assert True in [x in possible_losses_bps for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_bps)
-        if 'ml' in self.add_losses:
-            # this should be the default loss
-            loss -= output #(X_V_t, t)
-        ### alternative losses to choose from
-        if 'hyvarinen' in self.add_losses:
-            ## adding the Hyvarinen loss for the reflection ratio
-            temp = V_t * X_t
-            scal_prod = torch.sum(temp,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
-            norms_x = torch.sum(X_t**2,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
-            RV_t = V_t - 2*scal_prod * X_t / norms_x
-            RV_t = RV_t.detach().clone()
-            output_reflected = model(X_t, RV_t, t)
-            #output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t)
-            def g(x):
-                return 1 / (1+x)
-            loss += g(torch.exp(output-output_reflected))**2
-        if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
-            #### adding some loss for the refreshment ratio
-            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))#.unsqueeze(-1)
+        if 'VAE' in train_type:
+            assert model_vae is not None
+            # train the vae to learn (X_t | V_t) and return the loss
+            loss -= model_vae(X_t, V_t, t)
+
+        if 'RATIO' in train_type:
+            assert False, 'We rather model the probability and use ml loss rather than modeling the ratio.'
+            # use the output of VAE instead of V_t
+            assert True in [x in ['kl', 'logistic'] for x in self.add_losses]
+            loss = 0
+            if model_vae is not None:
+                V_t = model_vae.sample(X_t, t)
+            output = model(X_t, V_t, t)
             V = torch.randn_like(V_t)
-            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))#.unsqueeze(-1)
             output_V = model(X_t, V, t)
-            #output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
-        if 'square' in self.add_losses:
-            ## square loss: tends not to work well in my experience
-            loss += torch.exp(2*(log_nu_V_t - output)) 
-            loss -= 2 * torch.exp(log_nu_V-output_V)
-        if 'kl' in self.add_losses:
-            ## KL divergence based loss: pretty good
-            loss += torch.exp(log_nu_V_t - output) 
-            loss -= torch.log(torch.exp(log_nu_V-output_V))
-        if 'logistic' in self.add_losses:
-            ## logistic regression based loss: seems fine
-            loss -= torch.log(1/(1+torch.exp(log_nu_V_t - output)) )
-            loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
+            if 'kl' in self.add_losses:
+                ## KL divergence based loss: pretty good
+                loss += output - torch.log(output_V)
+            if 'logistic' in self.add_losses:
+                ## logistic regression based loss: seems fine
+                loss -= torch.log(1/(1+output))
+                loss -= torch.log(output_V/(1+output_V))
+        if 'NORMAL_WITH_VAE' in train_type:
+            assert model_vae is not None
+            V_t = model_vae.sample(X_t, t)
+        # MLE
+        if ('NORMAL' in train_type) or ('NORMAL_WITH_VAE' in train_type):
+            model = model.to(self.device)
+            output = model(X_t, V_t, t)
+            possible_losses_bps = ['ml', 'hyvarinen', 'square', 'kl', 'logistic']
+            assert True in [x in possible_losses_bps for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_bps)
+            if 'ml' in self.add_losses:
+                # this should be the default loss
+                loss -= output #(X_V_t, t)
+            ### alternative losses to choose from
+            if 'hyvarinen' in self.add_losses:
+                ## adding the Hyvarinen loss for the reflection ratio
+                temp = V_t * X_t
+                scal_prod = torch.sum(temp,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+                norms_x = torch.sum(X_t**2,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
+                RV_t = V_t - 2*scal_prod * X_t / norms_x
+                RV_t = RV_t.detach().clone()
+                output_reflected = model(X_t, RV_t, t)
+                #output_reflected = model(torch.cat([X_t, t], dim = -1)).log_prob(RV_t)
+                def g(x):
+                    return 1 / (1+x)
+                loss += g(torch.exp(output-output_reflected))**2
+            if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+                #### adding some loss for the refreshment ratio
+                log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))#.unsqueeze(-1)
+                V = torch.randn_like(V_t)
+                log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))#.unsqueeze(-1)
+                output_V = model(X_t, V, t)
+                #output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
+            if 'square' in self.add_losses:
+                ## square loss: tends not to work well in my experience
+                loss += torch.exp(2*(log_nu_V_t - output)) 
+                loss -= 2 * torch.exp(log_nu_V-output_V)
+            if 'kl' in self.add_losses:
+                ## KL divergence based loss: pretty good
+                loss += torch.exp(log_nu_V_t - output) 
+                loss -= torch.log(torch.exp(log_nu_V-output_V))
+            if 'logistic' in self.add_losses:
+                ## logistic regression based loss: seems fine
+                loss -= torch.log(1/(1+torch.exp(log_nu_V_t - output)) )
+                loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
 
 
         '''add this for reflection loss'''
@@ -752,7 +788,7 @@ class PDMP:
         return loss
     
 
-    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None, train_type='MLE', model_vae=None):
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None, train_type=['NORMAL'], model_vae=None):
         assert subsamples is not None
 
                 # generate random speed
@@ -806,9 +842,13 @@ class PDMP:
         if self.sampler == 'ZigZag':
             losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons, subsamples=subsamples)
         elif self.sampler == 'HMC':
+            for type in train_type:
+                assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE'], 'Unkown train_type {}'.format(type)
             losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae)
         elif self.sampler =='BPS':
-            losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons)
+            for type in train_type:
+                assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE'], 'Unkown train_type {}'.format(type)
+            losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae)
         
         return losses.mean() #/ torch.prod(torch.tensor(X_batch.shape[1:]))
     

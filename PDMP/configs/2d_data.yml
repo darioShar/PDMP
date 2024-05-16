@@ -100,7 +100,7 @@ model:
     x_emb_size: 8
     x_emb_type: mlp
     #flow_blocks: 8
-  vae: true
+  vae: false
 
 training:
   pdmp:

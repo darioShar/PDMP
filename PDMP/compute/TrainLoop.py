@@ -32,8 +32,8 @@ class TrainLoop:
                 progress_batch = False,
                 epoch_pbar = None,
                 max_batch_per_epoch = None,
-                train_type = 'NORMAL',
                 is_image=True,
+                train_type=None,
                 **kwargs):
         model.train()
         if progress_batch:
@@ -56,7 +56,7 @@ class TrainLoop:
                     # for image datasets.
                     Xbatch += 2*torch.rand_like(Xbatch) / (256)
 
-                if model_vae is not None:
+                if (model_vae is not None):
                     if self.epochs < 100:
                         train_type = ['VAE']
                     else:
@@ -65,13 +65,19 @@ class TrainLoop:
                             train_type = ['NORMAL'] 
                         else:
                             train_type = ['NORMAL_WITH_VAE'] 
+                    if not is_image:
+                        train_type = ['VAE', 'NORMAL']
                 else:
-                    train_type = ['NORMAL']
-                loss = noising_process.training_losses(model, 
+                    train_type = None
+                if train_type is not None:
+                    loss = noising_process.training_losses(model, 
                                                        Xbatch, 
                                                        train_type=train_type,#train_procedure[self.total_steps % len(train_procedure)], 
                                                        model_vae=model_vae, 
                                                        **kwargs)
+                else:
+                    loss = noising_process.training_losses(model, Xbatch, **kwargs)
+                
 
                 #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
                 #loss = loss.mean()
