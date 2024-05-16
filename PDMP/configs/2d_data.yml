@@ -4,12 +4,12 @@ data:
   between_minus_1_1: true
   quantile_cutoff: 0.99999
   data_alpha: 2.0
-  dataset: rose #gmm_grid # sas_grid
+  dataset: gmm_grid #gmm_grid # sas_grid
   isotropic: true
   n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: true #true
-  nsamples: 100000
+  nsamples: 32000
   bs: 4096 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.05
@@ -68,7 +68,7 @@ eval:
     #new_time_spacing
   # for diffusion
   diffusion:
-    reverse_steps: 1000
+    reverse_steps: 100
     clip_denoised: false
     ddim: false
     eta: 1.0
@@ -96,9 +96,11 @@ model:
     hidden_width: 256
     hidden_depth: 8
     time_emb_type: learnable
-    time_emb_size: 16
-    x_emb_size: 256
+    time_emb_size: 8
+    x_emb_size: 8
     x_emb_type: mlp
+    #flow_blocks: 8
+  vae: true
 
 training:
   pdmp:
@@ -106,6 +108,7 @@ training:
     #- 0.9
     grad_clip: null #1.0
     subsamples: 2 # for ZigZag
+    train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
   diffusion:
     ema_rates: null
     #- 0.9
@@ -126,6 +129,6 @@ optim:
 
 run:
   epochs: 1000
-  eval_freq: 100
-  checkpoint_freq: 500
+  eval_freq: null
+  checkpoint_freq: null
   progress: true # print progress bar

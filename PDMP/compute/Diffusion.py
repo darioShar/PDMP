@@ -679,7 +679,8 @@ class LevyDiffusion:
 
 
     def reverse_sampling(self, 
-                         model, 
+                         model,
+                         model_vae, # we do not use this here, but we need noising processes' function signature to match
                          shape,
                          reverse_steps,
                          time_spacing = None,

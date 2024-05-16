@@ -22,6 +22,7 @@ import PDMP.evaluate.Eval as Eval
 import PDMP.manage.Generate as Gen
 from PDMP.datasets import inverse_affine_transform
 import PDMP.models.NormalizingFlow as NormalizingFLow
+import PDMP.models.VAE as VAE
 
 
 ''''''''''' FILE MANIPULATION '''''''''''
@@ -269,6 +270,19 @@ def init_model_by_parameter(p):
             #                       hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     return model.to(p['device'])
 
+def init_model_vae_by_parameter(p):
+    # model
+    if not p['model']['vae']:
+        return None
+    
+    if not is_image_dataset(p['data']['dataset']):
+        model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+                                                        device=p['device'], 
+                                                        p_model_normalizing_flow=p['model']['normalizing_flow'])
+    else:
+        data_dim = p['data']['image_size']**2 * p['data']['channels']
+        model = VAE.VAE(nfeatures=data_dim)
+    return model.to(p['device'])
 
 def init_data_by_parameter(p):
     # get the dataset
@@ -368,22 +382,28 @@ def init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_
     )
     return eval
 
-def init_manager_by_parameter(model, 
+def init_manager_by_parameter(model,
+                              model_vae,
                               data,
                               noising_process, 
                               optimizer,
+                              optimizer_vae,
                               learning_schedule,
+                              learning_schedule_vae,
                               eval, 
                               logger,
                               p):
     
     # here kwargs goes to manager (ema_rates), train_loop (grad_clip), and eventually to training_losses (monte_carlo...)
     kwargs = p['training'][p['noising_process']]
-    manager = Manager(model, 
+    manager = Manager(model,
+                model_vae,
                 data,
                 noising_process,
                 optimizer,
+                optimizer_vae,
                 learning_schedule,
+                learning_schedule_vae,
                 eval,
                 logger,
                 # ema_rate, grad_clip
@@ -407,6 +427,8 @@ def prepare_experiment(p, logger = None, do_not_load_data=False):
         logger.initialize(p)
 
     model = init_model_by_parameter(p)
+    model_vae = init_model_vae_by_parameter(p)
+
     if do_not_load_data:
         data, test_data, dataset_files, test_dataset_files = None, None, None, None
     else:
@@ -418,6 +440,8 @@ def prepare_experiment(p, logger = None, do_not_load_data=False):
     noising_process = init_noising_process_by_parameter(p)
     optim = init_optimizer_by_parameter(model, p)
     learning_schedule = init_ls_by_parameter(optim, p)
+    optim_vae = init_optimizer_by_parameter(model_vae, p) if model_vae is not None else None
+    learning_schedule_vae = init_ls_by_parameter(optim_vae, p) if model_vae is not None else None
 
     # get generation manager
     gen_manager = init_generation_manager_by_parameter(noising_process, data, p)
@@ -426,11 +450,14 @@ def prepare_experiment(p, logger = None, do_not_load_data=False):
     eval = init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_path, real_data_path, p)
     
     # run training
-    manager = init_manager_by_parameter(model, 
+    manager = init_manager_by_parameter(model,
+                                        model_vae,
                                         data, 
                                         noising_process, 
                                         optim,
+                                        optim_vae,
                                         learning_schedule,
+                                        learning_schedule_vae,
                                         eval,
                                         logger, 
                                         p)

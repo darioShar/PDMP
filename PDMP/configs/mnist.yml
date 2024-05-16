@@ -78,13 +78,14 @@ model:
     num_res_blocks: 2
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 5
-    hidden_width: 1024 # 2048
-    hidden_depth: 8
-    time_emb_size: 64
+    transforms: 12
+    hidden_width: 512 # 2048
+    hidden_depth: 4
+    time_emb_size: 32
     time_emb_type: learnable
-    x_emb_size: 1024
-    x_emb_type: unet
+    x_emb_size: 32
+    x_emb_type: mlp
+  vae: true
 
 training:
   pdmp:
@@ -92,6 +93,8 @@ training:
     - 0.99
     grad_clip: null #1.0
     subsamples: 5 # for ZigZag
+    train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
+
   diffusion:
     ema_rates: 
     - 0.99
@@ -104,8 +107,8 @@ training:
 
 optim:
   optimizer: adamw
-  schedule: steplr #steplr
-  lr: 0.001
+  schedule: null #steplr
+  lr: 0.0005
   warmup: 50 #100
   lr_steps: 300000
   lr_step_size: 150

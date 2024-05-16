@@ -88,14 +88,15 @@ class Eval:
             self.logger.log('losses', epoch_loss)
 
     # little workaround to enable arbitrary number of kwargs to be specified beforehand
-    def evaluate_model(self, model, **kwargs):
+    def evaluate_model(self, model, model_vae, **kwargs):
         tmp_kwargs = self.kwargs
         tmp_kwargs.update(kwargs)
-        self._evaluate_model(model, **tmp_kwargs)
+        self._evaluate_model(model, model_vae, **tmp_kwargs)
 
     # compute evaluatin metrics
     def _evaluate_model(self,
-                        model, 
+                        model,
+                        model_vae,
                         data_to_generate,
                         batch_size,
                         fig_lim = 1.5,
@@ -112,7 +113,7 @@ class Eval:
             #self.gen_model.generate(data_to_generate, 
             #                print_progression= True,
             #                **kwargs)
-            self.gen_manager.generate(model, data_to_generate, print_progression=False, **kwargs)
+            self.gen_manager.generate(model, model_vae, data_to_generate, print_progression=False, **kwargs)
             
             # prepare data. REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT REMOVE CHANNEL FOR THE MOMENT
             gen_samples = self.gen_manager.samples
@@ -163,7 +164,8 @@ class Eval:
                 total_generated_data = 0
                 while remaining > 0:
                     print(remaining, end = ' ')
-                    self.gen_manager.generate(model, 
+                    self.gen_manager.generate(model,
+                                              model_vae,
                                          min(data_batch_size, remaining),
                                          print_progression= True,
                                          **kwargs)

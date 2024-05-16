@@ -24,6 +24,7 @@ class GenerationManager:
 
     def generate(self,
                  model,
+                 model_vae,
                  nsamples,
                  time_spacing = None,
                  use_samples = None,
@@ -37,6 +38,7 @@ class GenerationManager:
         size[0] = nsamples 
         x = self.noising_process.reverse_sampling(shape=size,
                                                   model = model,
+                                                  model_vae = model_vae,
                                                   time_spacing = time_spacing,
                                                   initial_data = use_samples,
                                                   print_progression = print_progression,

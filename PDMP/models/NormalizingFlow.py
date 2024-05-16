@@ -46,6 +46,7 @@ class NormalizingFlowModel(nn.Module):
         self.time_emb_size =    p_model_normalizing_flow['time_emb_size']
         self.depth =            p_model_normalizing_flow['hidden_depth']
         self.width =            p_model_normalizing_flow['hidden_width']
+        #self.flow_blocks =      p_model_normalizing_flow['flow_blocks']
         self.device =           device
         
         assert self.time_emb_type in self.possible_time_embeddings

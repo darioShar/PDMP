@@ -11,21 +11,27 @@ import copy
 class Manager:
         
     def __init__(self, 
-                 model, 
+                 model,
+                 model_vae,
                  data,
                  noising_process, 
                  optimizer,
+                 optimizer_vae,
                  learning_schedule,
+                 learning_schedule_vae,
                  eval,
                  logger = None,
                  ema_rates = None,
                  **kwargs):
         self.train_loop = TrainLoop.TrainLoop()
         self.model = model
+        self.model_vae = model_vae
         self.data = data
         self.noising_process = noising_process
         self.optimizer = optimizer
+        self.optimizer_vae = optimizer_vae
         self.learning_schedule = learning_schedule
+        self.learning_schedule_vae = learning_schedule_vae
         self.eval = eval
         if ema_rates is None:
             self.ema_objects = None
@@ -64,9 +70,12 @@ class Manager:
         self.train_loop.epoch(
             dataloader = self.data,
             model = self.model,
+            model_vae=self.model_vae,
             noising_process = self.noising_process,
             optimizer = self.optimizer,
+            optimizer_vae = self.optimizer_vae,
             learning_schedule = self.learning_schedule,
+            learning_schedule_vae = self.learning_schedule_vae,
             ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
             batch_callback = batch_callback,
             epoch_callback = epoch_callback,
@@ -92,13 +101,13 @@ class Manager:
         if not evaluate_emas:
             self.model.eval()
             with torch.inference_mode():
-                self.eval.evaluate_model(self.model, **kwargs)
+                self.eval.evaluate_model(self.model, self.model_vae, **kwargs)
         elif self.ema_objects is not None:
             for ema_obj in self.ema_objects:
                 model = ema_obj['model'].get_ema_model()
                 model.eval()
                 with torch.inference_mode():
-                    ema_obj['eval'].evaluate_model(model, callback_on_logging = ema_callback_on_logging, **kwargs)
+                    ema_obj['eval'].evaluate_model(model, self.model_vae, callback_on_logging = ema_callback_on_logging, **kwargs)
 
 
     def training_epochs(self):
@@ -107,12 +116,21 @@ class Manager:
     def training_batches(self):
         return self.train_loop.total_steps
     
+    def _safe_load_state_dict(self, dest, src):
+        if dest is not None:
+            dest.load_state_dict(src)
+
+    def _safe_save_state_dict(self, src):
+        return src.state_dict() if src is not None else None
+    
     def load(self, filepath):
         checkpoint = torch.load(filepath, map_location=torch.device(self.noising_process.device))
         self.model.load_state_dict(checkpoint['model_parameters'])
+        self._safe_load_state_dict(self.model_vae, checkpoint['model_vae_parameters'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-        if self.learning_schedule is not None:
-            self.learning_schedule.load_state_dict(checkpoint['learning_schedule'])
+        self._safe_load_state_dict(self.optimizer_vae, checkpoint['optimizer_vae'])
+        self._safe_load_state_dict(self.learning_schedule, checkpoint['learning_schedule'])
+        self._safe_load_state_dict(self.learning_schedule_vae, checkpoint['learning_schedule_vae'])
         if self.ema_objects is not None:
             for ema_obj, ema_state in zip(self.ema_objects, checkpoint['ema_models']):
                 ema_obj['model'].load_state_dict(ema_state)
@@ -122,12 +140,15 @@ class Manager:
     def save(self, filepath):
         checkpoint = {
             'model_parameters': self.model.state_dict(),
+            'model_vae_parameters': self._safe_save_state_dict(self.model_vae),
             'optimizer': self.optimizer.state_dict(),
+            'optimizer_vae': self._safe_save_state_dict(self.optimizer_vae),
             'ema_models': [ema_obj['model'].state_dict() for ema_obj in self.ema_objects] \
                         if self.ema_objects is not None else None,
             'epoch': self.train_loop.epochs,
             'steps': self.train_loop.total_steps,
-            'learning_schedule': None if self.learning_schedule is None else self.learning_schedule.state_dict(),
+            'learning_schedule': self._safe_save_state_dict(self.learning_schedule),
+            'learning_schedule_vae': self._safe_save_state_dict(self.learning_schedule_vae),
         }
         torch.save(checkpoint, filepath)
     

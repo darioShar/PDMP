@@ -31,10 +31,12 @@ folder="cleps/experiment_toy_data"
 
 
 datasets=('rose' 'olympic_rings' 'fractal_tree' 'checkerboard')
+
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
 #python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
-#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 1000 --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process diffusion --blocks 8 --units 256
+python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 1000 --dataset ${datasets[${SLURM_ARRAY_TASK_ID}]}  --noising_process diffusion --blocks 8 --units 256
+
 
 
 # now evaluate last models with varying reverse_steps

@@ -97,18 +97,18 @@ class PDMP:
             return torch.stack(chain)
         return torch.concat((x, v), dim = -1)
     
-    def refresh_given_rate(self, x, v, t, lambdas, s, model):
+    def refresh_given_rate(self, x, v, t, lambdas, s, model, model_vae):
         # lambdas[lambdas == 0.] += 1e-9
         event_time = torch.distributions.exponential.Exponential(lambdas)
         temp = event_time.sample()
         #temp = temp.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
-        tmp = model.sample(x, t)
+        tmp = model_vae.sample(x, t) if model_vae is not None else model.sample(x, t)
         #tmp = model(torch.cat((x,t), dim = -1)).sample()
         # print(temp[temp <= s].shape)
         # print((tmp[temp <= s]))
         v[temp <= s] = tmp[temp <= s]
 
-    def splitting_HMC_DRD(self, model, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
+    def splitting_HMC_DRD(self, model, model_vae, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
@@ -172,7 +172,7 @@ class PDMP:
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 switch_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
                 # print(switch_rate)
-                self.refresh_given_rate(x, v, t, switch_rate, delta, model)
+                self.refresh_given_rate(x, v, t, switch_rate, delta, model, model_vae)
                 x_init = x.clone()
                 v_init = v.clone()
                 x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
@@ -438,6 +438,7 @@ class PDMP:
     
     def reverse_sampling(self,
                         model,
+                        model_vae = None,
                         reverse_steps=None,
                         shape = None,
                         time_spacing = None,
@@ -471,6 +472,7 @@ class PDMP:
         func = reverse_sample_func[self.sampler][backward_scheme]
         assert func is not None, '{} not yet implemented'.format((self.sampler, backward_scheme))
         samples_or_chain = func(model,
+                                model_vae,
                                 self.T, 
                                 reverse_steps,
                                 shape = shape,
@@ -576,12 +578,82 @@ class PDMP:
         #loss -= 2*(g(output[:, :, 0]) + g(output[:, :, 1]))
         return loss
     
-    def training_loss_hmc(self, model, X_t, V_t, t):
+    def training_loss_hmc(self, model, X_t, V_t, t, train_type, model_vae=None):
+        # train_type: 'VAE', 'MLE', 'RATIO'
+        # 'MLE': only use model, which gives the log prob.
+        # 'VAE': only train the vae
+        # 'RATIO': if model_vae is given, trains the ratio with true v_t replaced by vae sample
+        # 'RATIO': if model_vae is not given, trains the ratio with true v_t
+        for type in train_type:
+            assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
+        
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
         t = t.to(self.device)
 
+        loss = 0
+        if 'VAE' in train_type:
+            assert model_vae is not None
+            # train the vae to learn (X_t | V_t) and return the loss
+            loss -= model_vae(X_t, V_t, t)
+
+        if 'RATIO' in train_type:
+            assert False, 'We rather model the probability and use ml loss rather than modeling the ratio.'
+            # use the output of VAE instead of V_t
+            assert True in [x in ['kl', 'logistic'] for x in self.add_losses]
+            loss = 0
+            if model_vae is not None:
+                V_t = model_vae.sample(X_t, t)
+            output = model(X_t, V_t, t)
+            V = torch.randn_like(V_t)
+            output_V = model(X_t, V, t)
+            if 'kl' in self.add_losses:
+                ## KL divergence based loss: pretty good
+                loss += output - torch.log(output_V)
+            if 'logistic' in self.add_losses:
+                ## logistic regression based loss: seems fine
+                loss -= torch.log(1/(1+output))
+                loss -= torch.log(output_V/(1+output_V))
+        if 'NORMAL_WITH_VAE' in train_type:
+            assert model_vae is not None
+            V_t = model_vae.sample(X_t, t)
+        # MLE
+        if ('NORMAL' in train_type) or ('NORMAL_WITH_VAE' in train_type):
+            model = model.to(self.device)
+            output = model(X_t, V_t, t)
+
+            # only refreshments in hmc
+            possible_losses_hmc = ['ml', 'square', 'kl', 'logistic']
+            assert True in [x in possible_losses_hmc for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_hmc)
+            if 'ml' in self.add_losses:
+                # this should be the default loss
+                loss -= output #(X_V_t, t)
+            ### alternative losses to choose from
+            if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+                #### adding some loss for the refreshment ratio
+                log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))
+                V = torch.randn_like(V_t)
+                log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))
+                #V_reshape = V.reshape(V.shape[0], -1)
+                output_V = model(X_t, V, t) #(X_V_t, t)
+                #output_V = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_reshape) #(X_V_t, t)
+            if 'square' in self.add_losses:
+                ## square loss: tends not to work well in my experience
+                loss += torch.exp(2*(log_nu_V_t -output)) 
+                loss -= 2 * torch.exp(log_nu_V-output_V)
+            if 'kl' in self.add_losses:
+                ## KL divergence based loss: pretty good
+                loss += torch.exp(log_nu_V_t -output) 
+                loss -= torch.log(torch.exp(log_nu_V-output_V))
+            if 'logistic' in self.add_losses:
+                ## logistic regression based loss: seems fine
+                loss -= torch.log(1/(1+torch.exp(log_nu_V_t -output)) )
+                loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
+
+
+            return loss
+    
         # run the model
         #t = t.reshape(-1, *[1]*len(X_t.shape[1:]))
         #t = t.unsqueeze(-1).unsqueeze(-1)
@@ -589,46 +661,14 @@ class PDMP:
         #V_t_t = V_t.reshape(V_t.shape[0], -1)
         #t = t.reshape(-1, 1)
         #t = t.repeat(1, 32)
-        model = model.to(self.device)
-        output = model(X_t, V_t, t)
+        #model = model.to(self.device)
+        #output = model(X_t, V_t, t)
         #output = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_t_t) #(X_V_t, t)
         #model.eval()
         #with torch.inference_mode():
         #    output_sample = model(torch.cat([X_t_t, t], dim = -1)).sample()
         #    print('output sample:', output_sample[0])
         #model.train()
-        loss = 0
-
-        # only refreshments in hmc
-        possible_losses_hmc = ['ml', 'square', 'kl', 'logistic']
-        assert True in [x in possible_losses_hmc for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_hmc)
-        if 'ml' in self.add_losses:
-            # this should be the default loss
-            loss -= output #(X_V_t, t)
-        ### alternative losses to choose from
-        if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
-            #### adding some loss for the refreshment ratio
-            log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))
-            V = torch.randn_like(V_t)
-            log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))
-            #V_reshape = V.reshape(V.shape[0], -1)
-            output_V = model(X_t, V, t) #(X_V_t, t)
-            #output_V = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_reshape) #(X_V_t, t)
-        if 'square' in self.add_losses:
-            ## square loss: tends not to work well in my experience
-            loss += torch.exp(2*(log_nu_V_t -output)) 
-            loss -= 2 * torch.exp(log_nu_V-output_V)
-        if 'kl' in self.add_losses:
-            ## KL divergence based loss: pretty good
-            loss += torch.exp(log_nu_V_t -output) 
-            loss -= torch.log(torch.exp(log_nu_V-output_V))
-        if 'logistic' in self.add_losses:
-            ## logistic regression based loss: seems fine
-            loss -= torch.log(1/(1+torch.exp(log_nu_V_t -output)) )
-            loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
-
-
-        return loss
 
     def training_loss_bps(self, model, X_t, V_t, t):
         # send to device
@@ -712,7 +752,7 @@ class PDMP:
         return loss
     
 
-    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None):
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None, train_type='MLE', model_vae=None):
         assert subsamples is not None
 
                 # generate random speed
@@ -766,7 +806,7 @@ class PDMP:
         if self.sampler == 'ZigZag':
             losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons, subsamples=subsamples)
         elif self.sampler == 'HMC':
-            losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons)
+            losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae)
         elif self.sampler =='BPS':
             losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons)
         

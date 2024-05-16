@@ -118,6 +118,12 @@ def update_parameters_before_loading(p, args):
     if args.subsamples is not None:
         p['training']['pdmp']['subsamples'] = args.subsamples
 
+    if args.vae is not None:
+        p['model']['vae'] = args.vae
+    
+    if args.train_type is not None:
+        p['training']['pdmp']['train_type'] = args.train_type
+    
     # model
     if args.blocks is not None:
         p['model']['mlp']['nblocks'] = args.blocks
@@ -244,6 +250,8 @@ def parse_args():
     parser.add_argument('--ml_loss', help='add maximum likelihood loss', default = None, action='store_true')
     parser.add_argument('--hyvarinen_loss', help='add hyvarinen loss', default = None, action='store_true')
     parser.add_argument('--subsamples', help='subsampling for ZigZag', default = None, type=int)
+    parser.add_argument('--vae', help='Use vae', default = None, action='store_true')
+    parser.add_argument('--train_type', help='Which training to use', default = None, type=str)
 
 
     # specific to evaluation
