@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import PDMP.compute.TrainLoop as TrainLoop
 import PDMP.models.Ema as Ema
 import copy
+from PDMP.manage.exp_utils import init_model_vae_by_parameter, \
+                                    init_ls_by_parameter,\
+                                    init_optimizer_by_parameter
+from PDMP.datasets import is_image_dataset
 
 #Wrapper around training and evaluation functions
 
@@ -63,6 +67,16 @@ class Manager:
                 self.logger.log('current_epoch', self.train_loop.epochs)
         
         def batch_callback(batch_loss):
+                        # batch_loss is nan, reintialize vae
+            if np.isnan(batch_loss): 
+                if self.model_vae is not None:
+                    print('reinitinizling model vae')
+                    self.model_vae = init_model_vae_by_parameter(self.p)
+                    self.optimizer_vae = init_optimizer_by_parameter(self.model_vae, self.p)
+                    self.learning_schedule_vae = init_ls_by_parameter(self.optimizer_vae, self.p)
+                else:
+                    raise Exception('loss is nan')
+            
             self.eval.register_batch_loss(batch_loss)
             if self.logger is not None:
                 self.logger.log('current_batch', self.train_loop.total_steps)
@@ -79,6 +93,7 @@ class Manager:
             ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
             batch_callback = batch_callback,
             epoch_callback = epoch_callback,
+            is_image=is_image_dataset(self.p['data']['dataset'])
             **tmp_kwargs)
 
 

@@ -652,7 +652,7 @@ class PDMP:
                 loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
 
 
-            return loss
+        return loss
     
         # run the model
         #t = t.reshape(-1, *[1]*len(X_t.shape[1:]))
