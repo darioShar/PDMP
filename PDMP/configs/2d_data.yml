@@ -121,7 +121,7 @@ training:
 optim:
   optimizer: adamw
   schedule: null #steplr, linear
-  lr: 0.005
+  lr: 0.002
   warmup: 0 #1000
   lr_steps: 300000
   lr_step_size: 400
