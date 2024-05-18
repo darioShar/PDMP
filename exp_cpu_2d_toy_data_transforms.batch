@@ -10,7 +10,7 @@
 #SBATCH --mem=24G                # Total memory allocated
 # ### ### SBATCH --hint=multithread       # we get physical cores not logical
 #SBATCH --output=./log/%x_%j.out   # output file name
-#SBATCH --array=0              # job array index
+#SBATCH --array=0-3              # job array index
 
 echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
 
@@ -26,18 +26,18 @@ conda activate diffusion
 
 exp_number=0
 
-epochs=500
-folder="cleps/experiment_toy_data_transforms"
-
+epochs=1000
+folder="cleps/experiment_toy_data_transforms_improved"
+# improved: from (3, 128)to (8, 256) and from (128) to (256) for diffusion and ZigZag
 
 #datasets=('rose' 'olympic_rings' 'fractal_tree' 'checkerboard')
 # rose
 transforms=(4 8 12 24)
 
-#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 3 --width 128 --transforms ${transforms[$SLURM_ARRAY_TASK_ID]}
-#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 3 --width 128 --transforms ${transforms[$SLURM_ARRAY_TASK_ID]}
-#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 64 --units 128
-#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 1000 --dataset rose  --noising_process diffusion --blocks 64 --units 128
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check 500 --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256 --transforms ${transforms[$SLURM_ARRAY_TASK_ID]} --time_horizon 3
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check 500 --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256 --transforms ${transforms[$SLURM_ARRAY_TASK_ID]} --time_horizon 3
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check 500 --reverse_steps 100  --dataset rose  --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks ${transforms[$SLURM_ARRAY_TASK_ID]} --units 256 --time_horizon 3
+python ./run_pdmp.py --job_id $SLURM_JOB_ID --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check 500 --reverse_steps 100 --dataset rose  --noising_process diffusion --blocks ${transforms[$SLURM_ARRAY_TASK_ID]} --units 256 --time_horizon 3
 
 
 # now evaluate last models with varying reverse_steps

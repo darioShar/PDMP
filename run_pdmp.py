@@ -44,13 +44,12 @@ if __name__ == '__main__':
     # run the experiment
     exp.run( 
         progress=p['run']['progress'],
-        verbose = True,
         max_batch_per_epoch= args.n_max_batch,
         no_ema_eval=args.no_ema_eval, # to speed up testing
         )
     
     # in any case, save last models.
-    print(exp.save())
+    print(exp.save(curr_epoch=p['run']['epochs'])) #curr_epoch=p['run']['epochs']
     
     # close everything
     exp.terminate()

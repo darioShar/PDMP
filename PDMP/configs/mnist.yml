@@ -6,7 +6,7 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 256 # batch size
+  bs: 64 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -16,7 +16,7 @@ pdmp:
   refresh_rate: 1.
   add_losses: 
   #- hyvarinen
-  #- ml
+  - ml
   #- logistic
 
 
@@ -80,12 +80,20 @@ model:
     num_res_blocks: 2
   # this is for the other samplers; normalizing flows
   normalizing_flow:
+#    transforms: 24
+#    hidden_width: 1024 # 2048
+#    hidden_depth: 4
+#    time_emb_size: 32
+#    time_emb_type: learnable
+#    x_emb_size: 32
+#    x_emb_type: mlp # mlp, unet
+#  vae: false
     transforms: 24
-    hidden_width: 1024 # 2048
-    hidden_depth: 4
-    time_emb_size: 32
+    hidden_width: 128 # 2048
+    hidden_depth: 3
+    time_emb_size: 16
     time_emb_type: learnable
-    x_emb_size: 32
+    x_emb_size: 16
     x_emb_type: mlp # mlp, unet
   vae: false
 
@@ -96,7 +104,7 @@ training:
     grad_clip: null #1.0
     subsamples: 5 # for ZigZag
     train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
-
+    train_alternate: false
   diffusion:
     ema_rates: 
     - 0.99

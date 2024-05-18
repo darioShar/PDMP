@@ -24,30 +24,28 @@ source /home/$USER/.bashrc
 conda activate pdmp
 
 
-exp_number=0
+exp_number=1
 
-epochs=500
+epochs=1000
 folder="cleps/experiment_toy_data_trasnforms"
 
 
-#datasets=('rose' 'olympic_rings' 'fractal_tree' 'checkerboard')
+datasets=('rose' 'olympic_rings' 'fractal_tree' 'checkerboard')
 # use fractal_tree
 transforms=(4 8 12 24)
 
 
-python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
-python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
-python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --hyvarinen_loss --blocks 64 --units 128
-python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process diffusion --blocks 64 --units 128 
+#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
+#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
+#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process pdmp --sampler HMC --refresh_rate 1.0 --hyvarinen_loss --blocks 64 --units 128
+#python ./run_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval 100 --check $epochs --reverse_steps 100  --dataset fractal_tree  --noising_process diffusion --blocks 64 --units 128 
 
 
 # now evaluate last models with varying reverse_steps
-#reverse_steps=(50 100 250 1000)
+#reverse_steps=(10 25 50 100 250)
 #for i in $(seq 0 $(( ${#reverse_steps[@]} - 1)) ) ; do
-#    # pdmp
-#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 8 --width 256
-#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 8 --units 256
-#    # diffusion
-#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion --blocks 8 --units 256
+#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
+#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --depth 3 --width 256 --transforms 8
+#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --blocks 64 --units 128 
+#    python ./eval_pdmp.py --config 2d_data --name ${folder}_$exp_number --epochs $epochs --eval $epochs --reverse_steps ${reverse_steps[${i}]} --noising_process diffusion --blocks 64 --units 128
 #done

@@ -623,7 +623,12 @@ class PDMP:
                 loss -= torch.log(output_V/(1+output_V))
         if 'NORMAL_WITH_VAE' in train_type:
             assert model_vae is not None
+            #print('V_t true mean', V_t.mean())
+            #print('V_t true std', V_t.std())
             V_t = model_vae.sample(X_t, t)
+            #V_t = V_t.detach().clone() # so that we're sure it doesn't affect model_vae
+            #print('V_t vae mean', V_t.mean())
+            #print('V_t vae std', V_t.std())
         # MLE
         if ('NORMAL' in train_type) or ('NORMAL_WITH_VAE' in train_type):
             model = model.to(self.device)

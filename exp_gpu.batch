@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --partition=gpu          # Name of the partition
-#SBATCH --gres=gpu:rtx8000:1     # GPU nodes are only available in gpu partition
+#SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
 #SBATCH --exclude=gpu01[2-3]        # exclude some nodes
 #SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
 #SBATCH --mem=20G                # Total memory allocated
@@ -31,8 +31,19 @@ conda activate diffusion
 #python ./eval_pdmp.py --config mnist --name mnist --noising_process pdmp --sampler HMC --refresh_rate 1.0 --epochs 100 --check 100 --eval 100 --ml_loss --log --reverse_steps 150 --time_horizon 6 --exponent 3 --depth 8 --width 1024 --embedding_type learnable --embedding_size 512 --log --ema_eval
 
 # mnist unet
-python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd --epochs 100 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --lr 0.0005 --x_embedding_type unet --x_embedding_size 1024 --width 128 --depth 3
-#python ./eval_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd --epochs 100 --eval 100 --time_horizon 10 --reverse_steps 15 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss  --ema_eval --x_embedding_type unet --depth 4 --width 1024 --x_embedding_size 1024 --transforms 24 --t_embedding_type learnable --t_embedding_size 32 --generate 128 --log
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd_zigzag --epochs 100 --check 10 --time_horizon 4 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --log --subsamples 5
+
+#mnist 
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd_smaller_hmc --epochs 400 --check 25 --time_horizon 4 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --x_embedding_type unet --x_embedding_size 1024 --width 64 --depth 3 --transforms 15 --resume
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd_smaller_bps --epochs 400 --check 25 --time_horizon 4 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --log --x_embedding_type unet --x_embedding_size 1024 --width 64 --depth 3 --transforms 15
+
+
+# mnist cont
+#python ./eval_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd_smaller_hmc --epochs 100 --eval 100 --time_horizon 4 --reverse_steps 20 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --x_embedding_type unet --x_embedding_size 1024 --width 64 --depth 3 --transforms 15 --generate 128 --log
+python ./eval_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_contd_smaller_bps --epochs 200 --eval 200 --time_horizon 4 --reverse_steps 20 --exponent 2 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss  --x_embedding_type unet --x_embedding_size 1024 --width 64 --depth 3 --transforms 15 --generate 128 --log
 
 # mnist vae
-#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_vae --epochs 150 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --vae --resume #--lr 0.0005 # --x_embedding_type unet --x_embedding_size 1024 --width 256
+# vae only
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_vae --epochs 500 --check 25 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --vae --resume # --train_alternate
+# normalizing flow model is trained on true V_t and vae's sample of V_t. Alternate.
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_vae --epochs 800 --check 25 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler HMC --refresh_rate 1.0 --ml_loss --log --vae --resume --train_alternate

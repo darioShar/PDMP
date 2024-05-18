@@ -9,7 +9,7 @@ data:
   n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: true #true
-  nsamples: 32000
+  nsamples: 100000
   bs: 4096 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.05
@@ -63,7 +63,7 @@ eval:
     backward_scheme: splitting # euler
     reverse_steps: 100 # reverse_steps are only part of evaluation, not of the training
     exponent: 2 # might need to remove that for hashes to match afterwards.
-    get_sample_history: true
+    get_sample_history: false
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
@@ -108,7 +108,7 @@ training:
     #- 0.9
     grad_clip: null #1.0
     subsamples: 2 # for ZigZag
-    train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
+    train_type: NORMAL # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
   diffusion:
     ema_rates: null
     #- 0.9

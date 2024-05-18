@@ -166,70 +166,76 @@ class Experiment:
     # training, checkpoints, closing logger and saving.
     # attention: eval_freq corresponds to freq of eval in each ckeckpoint_freq loop
     def run(self, 
-            progress = True,
-            progress_batch = False,
-            verbose = True,
             no_ema_eval = False,
             **kwargs): # bs, lr, eval_freq, Lploss...
         
-        total_epochs = self.p['run']['epochs']
         epochs = self.p['run']['epochs']
-        eval_freq = self.p['run']['eval_freq']
-        checkpoint_freq = self.p['run']['checkpoint_freq']
+        def checkpoint_callback(curr_epoch):
+            print(self.save(curr_epoch=curr_epoch))
 
-        assert (eval_freq is None) or eval_freq > 0
-        assert (checkpoint_freq is None) or checkpoint_freq > 0
-
-        # if they are none, set them above the number of requested epochs, so nothing happens
-        if eval_freq is None:
-            eval_freq = epochs + 1
-        if checkpoint_freq is None:
-            checkpoint_freq = epochs + 1
-
-        import tqdm
-        if progress:
-            tqdm.tqdm._instances.clear()
-            pbar = tqdm.tqdm(total = epochs)
-
-        # in order to run a maximum number of consecutive epochs in a single loop
-        to_next_eval = eval_freq
-        to_next_checkpoint = checkpoint_freq
-        while epochs > 0:
-            n_epochs = min(to_next_eval, to_next_checkpoint, epochs)
-            if verbose:
-                print('training for {} epochs'.format(n_epochs), end='...')
-            self.manager.train(nepochs = n_epochs, 
-                               progress_batch = progress_batch,
-                               epoch_pbar = pbar if progress else None, # pbar for epochs
-                               **kwargs)
-            if verbose:
-                print('done')
-            if to_next_checkpoint == n_epochs:
-                to_next_checkpoint = checkpoint_freq
-                print(self.save(curr_epoch=self.manager.training_epochs()))
-            else:
-                to_next_checkpoint -= n_epochs
-            if to_next_eval == n_epochs:
-                if verbose:
-                    print('starting evaluation of the model:')
-                to_next_eval = eval_freq
-                self.manager.evaluate(evaluate_emas=False)
-                # save generation
-                #if not self.manager.eval.is_image:
-                    #print('saving at epoch number {}'.format(total_epochs - epochs + n_epochs))
-                    #self.manager.eval.gen_manager.animation(generated_data_name = '{}_{}_{}'.format(self.p['pdmp']['sampler'], self.p['data']['dataset'], total_epochs - epochs + n_epochs))
-                if not no_ema_eval:
-                    if verbose:
-                        print('starting evaluation of the EMAs:')
-                    self.manager.evaluate(evaluate_emas=True)
-            else:
-                to_next_eval -= n_epochs
-            epochs -= n_epochs
-            if verbose:
-                print('epochs left: {}'.format(epochs))
-        if progress:
-            pbar.close()
-            tqdm.tqdm._instances.clear()
+        self.manager.train(total_epoch=epochs, 
+                           checkpoint_callback=checkpoint_callback,
+                           no_ema_eval=no_ema_eval,
+                           **kwargs)
+    
+        #total_epochs = self.p['run']['epochs']
+        #epochs = self.p['run']['epochs']
+        #eval_freq = self.p['run']['eval_freq']
+        #checkpoint_freq = self.p['run']['checkpoint_freq']
+#
+        #assert (eval_freq is None) or eval_freq > 0
+        #assert (checkpoint_freq is None) or checkpoint_freq > 0
+#
+        ## if they are none, set them above the number of requested epochs, so nothing happens
+        #if eval_freq is None:
+        #    eval_freq = epochs + 1
+        #if checkpoint_freq is None:
+        #    checkpoint_freq = epochs + 1
+#
+        #import tqdm
+        #if progress:
+        #    tqdm.tqdm._instances.clear()
+        #    pbar = tqdm.tqdm(total = epochs)
+#
+        ## in order to run a maximum number of consecutive epochs in a single loop
+        #to_next_eval = eval_freq
+        #to_next_checkpoint = checkpoint_freq
+        #while epochs > 0:
+        #    n_epochs = min(to_next_eval, to_next_checkpoint, epochs)
+        #    if verbose:
+        #        print('training for {} epochs'.format(n_epochs), end='...')
+        #    self.manager.train(nepochs = n_epochs, 
+        #                       progress_batch = progress_batch,
+        #                       epoch_pbar = pbar if progress else None, # pbar for epochs
+        #                       **kwargs)
+        #    if verbose:
+        #        print('done')
+        #    if to_next_checkpoint == n_epochs:
+        #        to_next_checkpoint = checkpoint_freq
+        #        print(self.save(curr_epoch=self.manager.training_epochs()))
+        #    else:
+        #        to_next_checkpoint -= n_epochs
+        #    if to_next_eval == n_epochs:
+        #        if verbose:
+        #            print('starting evaluation of the model:')
+        #        to_next_eval = eval_freq
+        #        self.manager.evaluate(evaluate_emas=False)
+        #        # save generation
+        #        #if not self.manager.eval.is_image:
+        #            #print('saving at epoch number {}'.format(total_epochs - epochs + n_epochs))
+        #            #self.manager.eval.gen_manager.animation(generated_data_name = '{}_{}_{}'.format(self.p['pdmp']['sampler'], self.p['data']['dataset'], total_epochs - epochs + n_epochs))
+        #        if not no_ema_eval:
+        #            if verbose:
+        #                print('starting evaluation of the EMAs:')
+        #            self.manager.evaluate(evaluate_emas=True)
+        #    else:
+        #        to_next_eval -= n_epochs
+        #    epochs -= n_epochs
+        #    if verbose:
+        #        print('epochs left: {}'.format(epochs))
+        #if progress:
+        #    pbar.close()
+        #    tqdm.tqdm._instances.clear()
 
 
     def terminate(self):

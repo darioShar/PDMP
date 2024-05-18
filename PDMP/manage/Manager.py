@@ -5,12 +5,13 @@ import PDMP.compute.TrainLoop as TrainLoop
 import PDMP.models.Ema as Ema
 import copy
 from PDMP.datasets import is_image_dataset
-
+import torch.nn as nn
+from tqdm import tqdm
 #Wrapper around training and evaluation functions
 
 
 class Manager:
-        
+    
     def __init__(self, 
                  model,
                  model_vae,
@@ -26,7 +27,8 @@ class Manager:
                 reset_vae = None,
                  p = None,
                  **kwargs):
-        self.train_loop = TrainLoop.TrainLoop()
+        self.epochs = 0
+        self.total_steps = 0
         self.model = model
         self.model_vae = model_vae
         self.data = data
@@ -58,20 +60,20 @@ class Manager:
         self.logger = logger
      
     
-    def train(self, **kwargs):
+    def train(self, total_epoch, **kwargs):
         tmp_kwargs = self.kwargs
         tmp_kwargs.update(kwargs)
 
         def epoch_callback(epoch_loss):
             self.eval.register_epoch_loss(epoch_loss)
             if self.logger is not None:
-                self.logger.log('current_epoch', self.train_loop.epochs)
+                self.logger.log('current_epoch', self.epochs)
         
         def batch_callback(batch_loss):
                         # batch_loss is nan, reintialize vae
             if np.isnan(batch_loss): 
                 if self.model_vae is not None:
-                    print('reinitinizling model vae')
+                    print('reinitializing model vae')
                     m, o, l = self.reset_vae(self.p)
                     self.model_vae = m
                     self.optimizer_vae = o
@@ -81,22 +83,142 @@ class Manager:
             
             self.eval.register_batch_loss(batch_loss)
             if self.logger is not None:
-                self.logger.log('current_batch', self.train_loop.total_steps)
+                self.logger.log('current_batch', self.total_steps)
+        
+        self._train_epochs(total_epoch, 
+                           epoch_callback=epoch_callback, 
+                           batch_callback=batch_callback,
+                           **tmp_kwargs)
+        #self.train_loop.epoch(
+        #    dataloader = self.data,
+        #    model = self.model,
+        #    model_vae=self.model_vae,
+        #    noising_process = self.noising_process,
+        #    optimizer = self.optimizer,
+        #    optimizer_vae = self.optimizer_vae,
+        #    learning_schedule = self.learning_schedule,
+        #    learning_schedule_vae = self.learning_schedule_vae,
+        #    ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
+        #    batch_callback = batch_callback,
+        #    epoch_callback = epoch_callback,
+        #    is_image=is_image_dataset(self.p['data']['dataset']),
+        #    **tmp_kwargs)
 
-        self.train_loop.epoch(
-            dataloader = self.data,
-            model = self.model,
-            model_vae=self.model_vae,
-            noising_process = self.noising_process,
-            optimizer = self.optimizer,
-            optimizer_vae = self.optimizer_vae,
-            learning_schedule = self.learning_schedule,
-            learning_schedule_vae = self.learning_schedule_vae,
-            ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
-            batch_callback = batch_callback,
-            epoch_callback = epoch_callback,
-            is_image=is_image_dataset(self.p['data']['dataset']),
-            **tmp_kwargs)
+    def _train_epochs(
+                self,
+                total_epochs,
+                eval_freq = None,
+                checkpoint_freq= None,
+                checkpoint_callback=None,
+                no_ema_eval = False,
+                grad_clip = None,
+                batch_callback = None,
+                epoch_callback = None,
+                max_batch_per_epoch = None,
+                progress = False,
+                train_type=None,
+                train_alternate=False,
+                **kwargs):
+        
+
+        self.model.train()
+        if self.model_vae is not None:
+            self.model_vae.train()
+        
+        ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None
+        print('training model to epoch {} from epoch {}'.format(total_epochs, self.epochs), '...')
+        is_image = is_image_dataset(self.p['data']['dataset'])
+        freeze_vae = False
+
+        #train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
+        #['VAE']*5 + ['NORMAL']*2 + ['NORMAL_WITH_VAE']*1 + ['NORMAL']*2
+
+        while self.epochs < total_epochs:
+            epoch_loss = steps = 0
+            for i, (Xbatch, y) in enumerate(tqdm(self.data) if progress else self.data):
+                if max_batch_per_epoch is not None:
+                    if i >= max_batch_per_epoch:
+                        break
+                
+                if is_image:
+                    # for image datasets.
+                    Xbatch += 2*torch.rand_like(Xbatch) / (256)
+
+                if (self.model_vae is not None):
+                    if not train_alternate:
+                        train_type = ['VAE']
+                    else:
+                        freeze_vae = True
+                        self.model_vae.eval()
+                        if (self.total_steps % 2) == 0:
+                            train_type = ['NORMAL'] 
+                        else:
+                            train_type = ['NORMAL_WITH_VAE'] 
+                    if not is_image:
+                        train_type = ['VAE', 'NORMAL']
+                else:
+                    train_type = None
+                
+                #print('train_type:', train_type)
+                
+                if train_type is not None:
+                    loss = self.noising_process.training_losses(self.model, 
+                                                       Xbatch, 
+                                                       train_type=train_type,#train_procedure[self.total_steps % len(train_procedure)], 
+                                                       model_vae=self.model_vae, 
+                                                       **kwargs)
+                else:
+                    loss = self.noising_process.training_losses(self.model, Xbatch, **kwargs)
+                
+
+                #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
+                #loss = loss.mean()
+                #print('loss computed')
+                # and finally gradient descent
+                self.optimizer.zero_grad()
+                if (self.optimizer_vae is not None) and (not freeze_vae):
+                    self.optimizer_vae.zero_grad()
+                loss.backward()
+                if grad_clip is not None:
+                    nn.utils.clip_grad_norm_(self.model.parameters(), grad_clip)
+                self.optimizer.step()
+                if (self.optimizer_vae is not None) and (not freeze_vae):
+                    self.optimizer_vae.step()
+                if (self.learning_schedule is not None):
+                    self.learning_schedule.step()
+                if (self.learning_schedule_vae is not None) and (not freeze_vae):
+                    self.learning_schedule_vae.step()
+                # update ema models
+                if ema_models is not None:
+                    for ema in ema_models:
+                        ema.update(self.model)
+                epoch_loss += loss.item()
+                steps += 1
+                self.total_steps += 1
+                if batch_callback is not None:
+                    batch_callback(loss.item())
+                if (self.total_steps % 20 == 0):
+                    print('batch_loss', loss.item())
+            epoch_loss = epoch_loss / steps
+            print('epoch_loss', epoch_loss)
+            self.epochs += 1
+            if epoch_callback is not None:
+                epoch_callback(epoch_loss)
+
+            print('Done training epoch {}/{}'.format(self.epochs, total_epochs))
+
+            # now potentially checkpoint
+            if (checkpoint_freq is not None) and (self.epochs % checkpoint_freq) == 0:
+                checkpoint_callback(self.epochs)
+                #print(self.save(curr_epoch=self.manager.training_epochs()))
+            
+            # now potentially eval
+            if (eval_freq is not None) and  (self.epochs % eval_freq) == 0:
+                print('starting evaluation of the model:')
+                self.evaluate()
+                if not no_ema_eval:
+                    print('starting evaluation of the EMAs:')
+                    self.evaluate(evaluate_emas=True)
 
 
     def get_ema_model(self, mu):
@@ -128,10 +250,10 @@ class Manager:
 
 
     def training_epochs(self):
-        return self.train_loop.epochs
+        return self.epochs
     
     def training_batches(self):
-        return self.train_loop.total_steps
+        return self.total_steps
     
     def _safe_load_state_dict(self, dest, src):
         if dest is not None:
@@ -151,8 +273,8 @@ class Manager:
         if self.ema_objects is not None:
             for ema_obj, ema_state in zip(self.ema_objects, checkpoint['ema_models']):
                 ema_obj['model'].load_state_dict(ema_state)
-        self.train_loop.total_steps = checkpoint['steps']
-        self.train_loop.epochs = checkpoint['epoch']
+        self.total_steps = checkpoint['steps']
+        self.epochs = checkpoint['epoch']
             
     def save(self, filepath):
         checkpoint = {
@@ -162,8 +284,8 @@ class Manager:
             'optimizer_vae': self._safe_save_state_dict(self.optimizer_vae),
             'ema_models': [ema_obj['model'].state_dict() for ema_obj in self.ema_objects] \
                         if self.ema_objects is not None else None,
-            'epoch': self.train_loop.epochs,
-            'steps': self.train_loop.total_steps,
+            'epoch': self.epochs,
+            'steps': self.total_steps,
             'learning_schedule': self._safe_save_state_dict(self.learning_schedule),
             'learning_schedule_vae': self._safe_save_state_dict(self.learning_schedule_vae),
         }

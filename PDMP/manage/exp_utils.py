@@ -85,7 +85,8 @@ def get_paths_from_param(p,
                          folder_path, 
                          make_new_dir = False, 
                          curr_epoch = None, 
-                         new_eval_subdir=False): # saves eval and param in a new subfolder
+                         new_eval_subdir=False,
+                         do_not_load_model=False): # saves eval and param in a new subfolder
     save_folder_path, h = get_hash_path_from_param(p, folder_path, make_new_dir)
     if new_eval_subdir:
         eval_folder_path, h, h_eval = get_hash_path_eval_from_param(p, save_folder_path, make_new_dir)
@@ -97,6 +98,31 @@ def get_paths_from_param(p,
         L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h, str(curr_epoch)])}
     else:
         L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h])}
+        if not do_not_load_model:
+            # checks if model is there. otherwise, loads latest model. also checks equality of no_iteration model and latest iteration one
+            # list all model iterations
+            model_paths = list(Path(save_folder_path).glob('_'.join(('model', h)) + '*'))
+            assert len(model_paths) > 0, 'no models to load in {}, with hash {}'.format(save_folder_path, h)
+            max_model_iteration = 0
+            max_model_iteration_path = None
+            for i, x in enumerate(model_paths):
+                if str(x)[:-3].split('_')[-1].isdigit() and (len(str(x)[:-3].split('_')[-1]) < 8): # if it is digit, and not hash
+                    model_iter = int(str(x)[:-3].split('_')[-1])
+                    if max_model_iteration< model_iter:
+                        max_model_iteration = model_iter
+                        max_model_iteration_path = str(x)
+            if max_model_iteration_path is not None:
+                if Path(L['model'] + '.pt').exists():
+                    print('Found another save with no specified iteration alonside others with specified iterations. Will not load it')
+                print('Loading trained model at iteration {}'.format(max_model_iteration))
+                L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h, str(max_model_iteration)])}
+            elif Path(L['model']+ '.pt').exists():
+                print('Found model with no specified iteration. Loading it')
+                # L already holds the right name
+                #L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h])}
+            else:
+                raise Exception('Did not find a model to load at location {} with hash {}'.format(save_folder_path, h))
+            
     # then depending on save_new_eval, save either in save_folder or eval_folder
     if new_eval_subdir:
         if curr_epoch is not None:
@@ -109,6 +135,31 @@ def get_paths_from_param(p,
         L.update({name: '_'.join([os.path.join(save_folder_path, name), h]) for name in names[1:]})
     
     return tuple(L[name] +'.pt' for name in L.keys()) # model, param, eval
+
+
+    #save_folder_path, h = get_hash_path_from_param(p, folder_path, make_new_dir)
+    #if new_eval_subdir:
+    #    eval_folder_path, h, h_eval = get_hash_path_eval_from_param(p, save_folder_path, make_new_dir)
+#
+    #names = ['model', 'parameters', 'eval']
+    ## create path for each name
+    ## in any case, model get saved in save_folder_path
+    #if curr_epoch is not None:
+    #    L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h, str(curr_epoch)])}
+    #else:
+    #    L = {'model': '_'.join([os.path.join(save_folder_path, 'model'), h])}
+    ## then depending on save_new_eval, save either in save_folder or eval_folder
+    #if new_eval_subdir:
+    #    if curr_epoch is not None:
+    #        L.update({name: '_'.join([os.path.join(eval_folder_path, name), h, h_eval, str(curr_epoch)]) for name in names[1:]})
+    #    else:
+    #        L.update({name: '_'.join([os.path.join(eval_folder_path, name), h, h_eval]) for name in names[1:]})
+    #else:
+    #    # we consider the evaluation to be made all along the epochs, in order to get a list of evaluations.s
+    #    # so we do not append curr_epoch here. 
+    #    L.update({name: '_'.join([os.path.join(save_folder_path, name), h]) for name in names[1:]})
+    #
+    #return tuple(L[name] +'.pt' for name in L.keys()) # model, param, eval
 
 
 def prepare_data_directories(dataset_name, dataset_files, remove_existing_eval_files, num_real_data, hash_params):
@@ -382,6 +433,12 @@ def init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_
     )
     return eval
 
+def reset_model(p):
+    model = init_model_by_parameter(p)
+    optim = init_optimizer_by_parameter(model, p)
+    learning_schedule = init_ls_by_parameter(model, p)
+    return model, optim, learning_schedule
+
 def reset_vae(p):
     model_vae = init_model_vae_by_parameter(p)
     optim_vae = init_optimizer_by_parameter(model_vae, p) if model_vae is not None else None
@@ -414,6 +471,8 @@ def init_manager_by_parameter(model,
                 logger,
                 reset_vae=reset_vae,
                 p = p,
+                eval_freq = p['run']['eval_freq'],
+                checkpoint_freq = p['run']['checkpoint_freq'],
                 # ema_rate, grad_clip
                 **kwargs
                 )
@@ -513,7 +572,8 @@ def load_experiment_from_param(p,
     model_path, _, eval_path = get_paths_from_param(p, 
                                                    folder_path, 
                                                    curr_epoch=curr_epoch,
-                                                   new_eval_subdir = load_eval_subdir)
+                                                   new_eval_subdir = load_eval_subdir,
+                                                   do_not_load_model=do_not_load_model)
     model, data, test_data, manager = _load_experiment(p, 
                                             model_path, 
                                             eval_path, 

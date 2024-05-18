@@ -34,12 +34,17 @@ class TrainLoop:
                 max_batch_per_epoch = None,
                 is_image=True,
                 train_type=None,
+                train_alternate=False,
                 **kwargs):
         model.train()
-        if progress_batch:
-            progress_batch = lambda x : tqdm(x)
-        else:
-            progress_batch = lambda x : x
+
+        if model_vae is not None:
+            model_vae.train()
+        
+        #if progress_batch:
+        #    progress_batch = lambda x : tqdm(x)
+        #else:
+        #    progress_batch = lambda x : x
         
         #train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
         #['VAE']*5 + ['NORMAL']*2 + ['NORMAL_WITH_VAE']*1 + ['NORMAL']*2
@@ -47,7 +52,7 @@ class TrainLoop:
         freeze_vae = False
         for epoch in range(nepochs):
             epoch_loss = steps = 0
-            for i, (Xbatch, y) in progress_batch(enumerate(dataloader)):
+            for i, (Xbatch, y) in enumerate(tqdm(dataloader)):
                 if max_batch_per_epoch is not None:
                     if i >= max_batch_per_epoch:
                         break
@@ -57,10 +62,11 @@ class TrainLoop:
                     Xbatch += 2*torch.rand_like(Xbatch) / (256)
 
                 if (model_vae is not None):
-                    if self.epochs < 100:
+                    if not train_alternate:
                         train_type = ['VAE']
                     else:
                         freeze_vae = True
+                        model_vae.eval()
                         if (self.total_steps % 2) == 0:
                             train_type = ['NORMAL'] 
                         else:
@@ -69,6 +75,9 @@ class TrainLoop:
                         train_type = ['VAE', 'NORMAL']
                 else:
                     train_type = None
+                
+                #print('train_type:', train_type)
+                
                 if train_type is not None:
                     loss = noising_process.training_losses(model, 
                                                        Xbatch, 
@@ -90,7 +99,7 @@ class TrainLoop:
                 if grad_clip is not None:
                     nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
-                if optimizer_vae is not None:
+                if (optimizer_vae is not None) and (not freeze_vae):
                     optimizer_vae.step()
                 if (learning_schedule is not None):
                     learning_schedule.step()
@@ -105,7 +114,8 @@ class TrainLoop:
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
-                print('batch_loss', loss.item())
+                if (self.total_steps % 20 == 0):
+                    print('batch_loss', loss.item())
             if epoch_pbar is not None:
                 epoch_pbar.update(1)
             epoch_loss = epoch_loss / steps
