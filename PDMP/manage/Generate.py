@@ -51,24 +51,19 @@ class GenerationManager:
                                                   get_sample_history = get_sample_history,
                                                   **tmp_kwargs)
         # store samples and possibly history on cpu
-        #assert data.shape[-1] == 2, 'only 2d data supported for the moment.'
+        # as done in LIM, clamp to -1, 1
+        clamp = 1. if self.is_image else 6.
         if get_sample_history:
             hist = x
             samples = hist[-1, ..., :data.shape[-1]]
-            self.history = [h[..., :data.shape[-1]].cpu() for h in hist]
-            if self.is_image:
-                self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform
+            self.history = hist[..., :data.shape[-1]].clamp(-clamp, clamp).cpu()
         else:
             samples = x[..., :data.shape[-1]] # select positions in case of pdmp
-        # as done in LIM, clamp to -1, 1
+        samples = samples.clamp(-clamp, clamp).cpu()
         if self.is_image:
-            samples = samples.clamp(-1., 1.)
-        else:
-            samples = samples.clamp(-6., 6.)
-        
-        self.samples = samples.cpu()
-        if self.is_image:
-            self.samples = inverse_affine_transform(self.samples)
+            self.samples = inverse_affine_transform(samples)
+            if len(self.history) != 0:
+                self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform
 
     def load_original_data(self, nsamples):
         data_size = 0
