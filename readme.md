@@ -48,7 +48,7 @@ To rather use diffusion, one can run
 ## How to evaluate 
 The `eval_pdmp.py` script is used to evaluate models that are already trained and checkpointed thanks to the previous script. Let's look at the following command:
 
-> python ./eval_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --reverse_steps 100 --noising_process diffusion
+> python ./eval_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --loss hyvarinen
 
 This will look into the `./models/2d_pdmp` folder to find models trained with the parameters specified in `./PDMP/config/2d_data.yml` (parameters specified in the command line overwrite those specified in the config file). The script will then load corresponding models checkpointed at epochs 25, 50, ..., 100, and evaluate each of them . 
 
