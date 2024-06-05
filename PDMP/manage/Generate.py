@@ -86,24 +86,30 @@ class GenerationManager:
     def get_image(self, 
                   idx = -1, 
                   black_and_white=False, # in the case of single channel data
+                  title=None,
                   ):
-        return self._get_image_from(self.samples, 
+        img = self._get_image_from(self.samples, 
                                     idx=idx, 
                                     black_and_white=black_and_white)
+        fig = plt.figure()
+        plt.imshow(img, animated = False)
+        if title is not None:
+            plt.title(title)
+        return fig
     
+    def _img_to_plt_img(self, tensor):
+        return torch.stack([tensor[i]for i in range(tensor.shape[0])], dim = -1)
+
     def _get_image_from(self, 
                         samples,
                         idx = -1,
-                        black_and_white = False,
-                       animated = False):
+                        black_and_white = False):
         img = samples[idx]
-        img = torch.stack([img[i]for i in range(img.shape[0])], dim = -1)
+        img = self._img_to_plt_img(img)
         # potentially repeat last dimension for signle channel data to be black and white
         if black_and_white and img.shape[-1] == 1:
-            img.repeat(1, 1, 3)
-        fig = plt.figure()
-        plt.imshow(img, animated = animated)
-        return fig
+            img = img.repeat(1, 1, 3)
+        return img
     
     def get_plot(self, 
                  plot_original_data = True, 
@@ -162,11 +168,14 @@ class GenerationManager:
         fig, ax = plt.subplots()  # Create a figure and axes once.
         #if title is not None:
         #    plt.title(title)
+        if self.is_image:
+            image_shape = self._img_to_plt_img(self.load_original_data(1)[0]).shape
+            im = plt.imshow(np.random.random(image_shape), interpolation='none')
+        else:
+            scatter = ax.scatter([], [], alpha=alpha, animated=True, color=color, **self._get_scatter_marker_specific_kwargs(marker))
+            scatter_orig = ax.scatter([], [], alpha=alpha, animated=True, color='orange', **self._get_scatter_marker_specific_kwargs(marker))
 
-        scatter = ax.scatter([], [], alpha=alpha, animated=True, color=color, **self._get_scatter_marker_specific_kwargs(marker))
-        scatter_orig = ax.scatter([], [], alpha=alpha, animated=True, color='orange', **self._get_scatter_marker_specific_kwargs(marker))
-
-        def init_frame():
+        def init_frame_2d():
             #ax.clear()  # Clear the current axes.
             ax.set_xlim(xlim)  # Set the limit for x-axis.
             ax.set_ylim(ylim)  # Set the limit for y-axis.
@@ -175,20 +184,30 @@ class GenerationManager:
             scatter_orig.set_offsets(np.empty((0, 2)))  # Properly shaped empty array
             return scatter, scatter_orig, 
         
-        def draw_frame(i):
+        def init_frame_image():
+            im.set_data(np.random.random(image_shape))
+            return im, 
+
+        def draw_frame_2d(i):
             #ax.clear()
             Xvis = self.history[i].cpu().squeeze(1)[:limit_nb_datapoints]
-            if self.is_image:
-                fig = self._get_image_from([Xvis], animated=True)
-            else:
-                scatter.set_offsets(Xvis)
-                if plot_original_data:
-                    scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
-                    return scatter, scatter_orig, 
+            scatter.set_offsets(Xvis)
+            if plot_original_data:
+                scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
+                return scatter, scatter_orig, 
             return scatter, 
-        
+    
+        def draw_frame_image(i):
+            Xvis = self.history[i][0].cpu() # just take first image of the batch.
+            img = self._get_image_from([Xvis], black_and_white=True)
+            im.set_data(img)
+            return im,
+    
         # 2500 ms per loop
-        anim = animation.FuncAnimation(fig, draw_frame, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame)
+        if self.is_image:
+            anim = animation.FuncAnimation(fig, draw_frame_image, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame_image)
+        else:
+            anim = animation.FuncAnimation(fig, draw_frame_2d, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame_2d)
         return anim
 
     def save_animation(self,

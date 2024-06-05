@@ -266,18 +266,15 @@ class Manager:
         print('Generating {} datapoints'.format(nsamples))
 
         # generate images
+        gm = self.eval.gen_manager
         with torch.inference_mode():
-            gen_manager = self.eval.generate_default(self.model,
-                                    self.model_vae,
-                                    nsamples,
-                                    get_sample_history = True,
-                                    print_progression = True)
+            gm.generate(self.model, self.model_vae, nsamples, get_sample_history = True, print_progression = True)
         
         # get and display plots
         if self.eval.is_image:
-            gen_manager.get_image(black_and_white=True, title=title)
+            gm.get_image(black_and_white=True, title=title)
         else:
-            gen_manager.get_plot(plot_original_data=plot_original_data,
+            gm.get_plot(plot_original_data=plot_original_data,
                                  limit_nb_datapoints = nb_datapoints,
                                  title=title, 
                                  marker = marker, 
@@ -286,7 +283,7 @@ class Manager:
                                  ylim=ylim,
                                  alpha=alpha)
         plt.show(block=False)
-        anim = gen_manager.get_animation(plot_original_data=plot_original_data,
+        anim = gm.get_animation(plot_original_data=plot_original_data,
                                   limit_nb_datapoints=nb_datapoints,
                                   title=title, 
                                   marker = marker, 
