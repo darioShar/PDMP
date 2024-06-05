@@ -120,7 +120,7 @@ class LevyDiffusionModel(nn.Module):
                                           self.act)
         
         # possible exp block, at the end
-        features = self.nfeatures if self.noising_process == 'diffusion' else 2*self.nfeatures
+        features = self.nfeatures if self.noising_process == 'diffusion' else self.nfeatures # 2*self.nfeatures
         self.linear_in =  nn.Linear(features + self.additional_dim, self.nunits) # for ZigZag, take d dimension and output 2d dimension
         
         self.inblock = nn.Sequential(self.linear_in,
@@ -159,7 +159,7 @@ class LevyDiffusionModel(nn.Module):
                                                     if self.a_pos_emb \
                                                     else False,
                                                 activation = nn.SiLU),
-                zero_module(nn.Linear(self.nunits, self.nfeatures)) # 2d outputs, v=1 for the first d ones, v=-1 for the other d ones
+                zero_module(nn.Linear(self.nunits, self.nfeatures if noising_process == 'diffusion' else 2*self.nfeatures)) # 2d outputs, v=1 for the first d ones, v=-1 for the other d ones
             ])
         if self.compute_gamma:
             self.outblocks_var = nn.ModuleList([
@@ -246,7 +246,8 @@ class LevyDiffusionModel(nn.Module):
         else:
             if self.noising_process == 'ZigZag':
                 # aply this function for positive output and better behaviour around 1.
-                val_1 = torch.log(1 + torch.exp(val_1)) / np.log(2) # so that's it 1 at val_1=0
+                #val_1 = torch.log(1 + torch.exp(val_1)) / np.log(2) # so that's it 1 at val_1=0
+                val_1 = torch.nn.functional.softplus(val_1, beta=1e-5, threshold=20)
             return val_1
             
         # duplicate last

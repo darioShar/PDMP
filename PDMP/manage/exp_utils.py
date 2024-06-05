@@ -23,7 +23,7 @@ import PDMP.manage.Generate as Gen
 from PDMP.datasets import inverse_affine_transform
 import PDMP.models.NormalizingFlow as NormalizingFLow
 import PDMP.models.VAE as VAE
-
+import PDMP.compute.NF as NF
 
 ''''''''''' FILE MANIPULATION '''''''''''
 
@@ -36,8 +36,14 @@ def hash_parameters(p):
     # check that different samplers give different hashes!!!!
     # wtf
     model_param = model_param_to_use(p)
-    #print('attention: retro-compatibility with normalizing flow in hash parameter')
-    retro_compatibility = []#['x_emb_type', 'x_emb_size']
+    print('attention: retro-compatibility with normalizing flow in hash parameter: not discrimnating model_type and model_vae_type')
+    #retro_compatibility = ['x_emb_type', 'x_emb_size']
+    retro_compatibility = ['model_type', 
+                           'model_vae_type', 
+                           'model_vae_t_hidden_width',
+                           'model_vae_t_emb_size',
+                           'model_vae_x_emb_size'
+                           ]
     to_hash = {'data': {k:v for k, v in p['data'].items() if k in ['dataset', 'channels', 'image_size']},
                p['noising_process']: {k:v for k, v in p[p['noising_process']].items()},
                'model':  {k:v for k, v in model_param.items() if not k in retro_compatibility}, # here retro-compatibility
@@ -251,10 +257,12 @@ def _unet_model(p, p_model_unet):
 
     learn_gamma = p_model_unet['compute_gamma']
     channels = p['data']['channels']
+    out_channels = 2 #(channels if (not learn_gamma) or (not (p['pdmp']['sampler'] == 'ZigZag')) else 2*channels)
+    print(p['pdmp']['sampler'], out_channels)
     model = unet.UNetModel(
             in_channels=channels,
             model_channels=p_model_unet['model_channels'],
-            out_channels= (channels if not learn_gamma else 2*channels),
+            out_channels= out_channels,
             num_res_blocks=p_model_unet['num_res_blocks'],
             attention_resolutions=p_model_unet['attn_resolutions'],# tuple([2, 4]), # adds attention at image_size / 2 and /4
             dropout= p_model_unet['dropout'],
@@ -285,7 +293,7 @@ def model_param_to_use(p):
 def init_model_by_parameter(p):
     # model
     model_param = model_param_to_use(p)
-    method = 'diffusion' if p['noising_process'] == 'diffusion' else p['pdmp']['sampler']
+    method = p['noising_process'] if p['noising_process'] in ['diffusion', 'nf'] else p['pdmp']['sampler']
     if not is_image_dataset(p['data']['dataset']):
         # model
         if method in ['diffusion', 'ZigZag']:
@@ -293,6 +301,21 @@ def init_model_by_parameter(p):
                                              device=p['device'], 
                                              p_model_mlp=model_param,
                                              noising_process=method)
+        elif method == 'nf':
+            type = model_param['model_type']
+            nfeatures = p['data']['dim']
+            if type == 'NSF':
+                model = zuko.flows.NSF(nfeatures, # generates V_t
+                               0,
+                               transforms=model_param['transforms'], #3
+                                hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
+            elif type == 'MAF':
+                model = zuko.flows.MAF(nfeatures, # generates V_t  
+                               0,
+                               transforms=model_param['transforms'], #3
+                                hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
+            else:
+                raise Exception('NF type {} not yet implement'.format(type))
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             #print('retro_compatibility: default values for 2d data when loading model')
@@ -332,12 +355,17 @@ def init_model_vae_by_parameter(p):
                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
     else:
         data_dim = p['data']['image_size']**2 * p['data']['channels']
-        model = VAE.VAE(nfeatures=data_dim)
+        model_vae_type = p['model']['normalizing_flow']['model_vae_type']
+        if model_vae_type == 'VAE_1':
+            model = VAE.VAE(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+        elif model_vae_type == 'VAE_16': 
+            model = VAE.MultiVAE(nfeatures=data_dim, n_vae=16, time_horizon=p['pdmp']['time_horizon'], p_model_nf=p['model']['normalizing_flow'])
     return model.to(p['device'])
 
 def init_data_by_parameter(p):
     # get the dataset
     dataset_files, test_dataset_files = get_dataset(p)
+    print(len(dataset_files), dataset_files[0])
     # implement DDP later on
     data = DataLoader(dataset_files, 
                       batch_size=p['data']['bs'], 
@@ -374,7 +402,11 @@ def init_noising_process_by_parameter(p):
                                    LIM = p['diffusion']['LIM'],
                                    diffusion_settings=p['diffusion'],
                                    #config = p['LIM_config'] if p['LIM'] else None
-                                   )
+        )
+    elif p['noising_process'] == 'nf':
+        noising_process = NF.NF(reverse_steps = 1,
+                                device = p['device'])
+    
     return noising_process
 
 

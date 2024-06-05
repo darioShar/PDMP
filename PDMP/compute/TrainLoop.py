@@ -12,6 +12,7 @@ from PDMP.datasets import is_image_dataset
 
 class TrainLoop:
     def __init__(self):
+        assert False, 'deprecated'
         self.epochs = 0
         self.total_steps = 0
         
@@ -76,7 +77,7 @@ class TrainLoop:
                 else:
                     train_type = None
                 
-                #print('train_type:', train_type)
+                print('train_type:', train_type)
                 
                 if train_type is not None:
                     loss = noising_process.training_losses(model, 
@@ -114,7 +115,7 @@ class TrainLoop:
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
-                if (self.total_steps % 20 == 0):
+                if (self.total_steps % 1 == 0):
                     print('batch_loss', loss.item())
             if epoch_pbar is not None:
                 epoch_pbar.update(1)

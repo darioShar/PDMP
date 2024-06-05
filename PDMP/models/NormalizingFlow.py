@@ -46,6 +46,7 @@ class NormalizingFlowModel(nn.Module):
         self.time_emb_size =    p_model_normalizing_flow['time_emb_size']
         self.depth =            p_model_normalizing_flow['hidden_depth']
         self.width =            p_model_normalizing_flow['hidden_width']
+        self.type =             p_model_normalizing_flow['model_type']
         #self.flow_blocks =      p_model_normalizing_flow['flow_blocks']
         self.device =           device
         
@@ -89,12 +90,22 @@ class NormalizingFlowModel(nn.Module):
         elif self.x_emb_type == 'concatenate':
             self.x_emb_size = self.nfeatures
         # Neural spline flow (NSF) with dim sample features (V_t) and context features (X_t, t)
-        self.normalizing_flow_model = zuko.flows.NSF(self.nfeatures, # generates V_t
+        if self.type == 'NSF':
+            self.normalizing_flow_model = zuko.flows.NSF(self.nfeatures, # generates V_t
                                self.x_emb_size + self.time_emb_size,
                                transforms=p_model_normalizing_flow['transforms'], #3
                                 hidden_features= [p_model_normalizing_flow['hidden_width']] * p_model_normalizing_flow['hidden_depth'] ) #[128] * 3)
+        elif self.type == 'MAF':
+            self.normalizing_flow_model = zuko.flows.MAF(self.nfeatures, # generates V_t  
+                               self.x_emb_size + self.time_emb_size,
+                               transforms=p_model_normalizing_flow['transforms'], #3
+                                hidden_features= [p_model_normalizing_flow['hidden_width']] * p_model_normalizing_flow['hidden_depth'] ) #[128] * 3)
+        else:
+            raise Exception('normalizing flow model type {} not yet implemented'.format(self.type))
         
         # zero the last module of the neural network.
+        # todo
+    
     
     def _forward(self, x_t, t):
         if self.x_emb_type == 'unet':

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+#SBATCH --job-name=PDMP    # create a short name for your job
+#SBATCH --nodes=1                # node count
+#SBATCH --ntasks=1               # total number of tasks across all nodes
+#SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --partition=cpu_homogen          # Name of the partition
+## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --mem=20G                # Total memory allocated
+# ### ### SBATCH --hint=multithread       # we get physical cores not logical
+#SBATCH --output=./log/%x_%j.out   # output file name
+#SBATCH --array=0-9              # job array index
+
+exp_number=$SLURM_ARRAY_TASK_ID
+
+echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
+
+set -x
+cd ${SLURM_SUBMIT_DIR}
+
+module purge
+module load cuda/11.4.0
+
+source /home/$USER/.bashrc
+conda activate diffusion
+
+epochs=300
+
+# other samplers with refresh rate 1.
+samplers=('BPS' 'HMC')
+depth=(2 8 32 128)
+width=(16 64 256)
+for i in $(seq 0 $(( ${#depth[@]} - 1)) ) ; do
+    for j in $(seq 0 $(( ${#width[@]}-1)) ) ; do
+        for k in $(seq 0 $(( ${#samplers[@]}-1)) ) ; do
+
+            python ./run_pdmp.py --config 2d_data --name cleps/experiment_model_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${k}]} --refresh_rate 1.0 --depth ${depth[${i}]} --width ${width[${j}]} --ml_loss --logistic_loss
+        
+        done
+    done
+done

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+import numpy as np
 import zuko
 
 from torch import Tensor
@@ -69,14 +70,22 @@ class BernoulliModel(zuko.flows.LazyDistribution):
         rho = torch.sigmoid(phi)
 
         return Independent(Bernoulli(rho), 1)
-    
+
 class VAE(nn.Module):
 
-    def __init__(self, nfeatures):
+    def __init__(self, nfeatures, p_model_nf):
         super(VAE, self).__init__()
         
         self.nfeatures=nfeatures
+        
+        time_mlp_hidden_features = p_model_nf['model_vae_t_hidden_width'] #128 # 128
+        time_mlp_output_dim = p_model_nf['model_vae_t_emb_size'] #32 # 32
+        
+        x_mlp_hidden_features = hidden_dim_codec 
+        x_mlp_output_dim = p_model_nf['model_vae_x_emb_size'] #64 # 256
+
         assert self.nfeatures == 1024
+        
         self.act = nn.SiLU(inplace=False)
         
         self.encoder = GaussianModel(16, 1024)
@@ -84,25 +93,26 @@ class VAE(nn.Module):
 
         self.prior = zuko.flows.MAF(
             features=16,
-            context=24,
+            context=x_mlp_output_dim + time_mlp_output_dim,
             transforms=3,
             hidden_features=(256, 256),
         )
 
         self.elbo = ELBO(self.encoder, self.decoder, self.prior)
         
-        self.time_mlp = nn.Sequential(nn.Linear(1, 8),
+
+        self.time_mlp = nn.Sequential(nn.Linear(1, time_mlp_hidden_features),
                                     self.act,
-                                    nn.Linear(8, 8), 
+                                    nn.Linear(time_mlp_hidden_features, time_mlp_hidden_features), 
                                     self.act,
-                                    nn.Linear(8, 8), 
+                                    nn.Linear(time_mlp_hidden_features, time_mlp_output_dim), 
                                     self.act)
 
-        self.x_mlp = nn.Sequential(nn.Linear(1024, hidden_dim_codec),
+        self.x_mlp = nn.Sequential(nn.Linear(1024, x_mlp_hidden_features),
                                     self.act,
-                                    nn.Linear(hidden_dim_codec, hidden_dim_codec), 
+                                    nn.Linear(x_mlp_hidden_features, x_mlp_hidden_features), 
                                     self.act,
-                                    nn.Linear(hidden_dim_codec, 16), 
+                                    nn.Linear(x_mlp_hidden_features, x_mlp_output_dim), 
                                     self.act)
     
     # elbo loss
@@ -124,3 +134,85 @@ class VAE(nn.Module):
         z = self.prior(torch.cat([x_t, t], dim = -1)).sample((1,))
         x = self.decoder(z).mean.reshape(-1, 1, 32, 32)
         return x
+    
+class MultiVAE(nn.Module):
+
+    def __init__(self, nfeatures, n_vae, time_horizon, p_model_nf):
+        super(MultiVAE, self).__init__()
+        
+        self.nfeatures=nfeatures
+        self.n_vae = n_vae
+        self.time_horizon = time_horizon
+        
+        assert self.nfeatures == 1024, 'only implemented on 32x32 mnist at the moment'
+        #assert self.time_horizon == 10, 'only implements time horizon ==10 for the moment'
+        assert self.n_vae == 16, 'only implements n_vae==16 for the moment'
+
+        self.vae_t_bins = self.vae_time_bins()
+        self.vae_list = nn.ModuleList([VAE(self.nfeatures, p_model_nf=p_model_nf) for _ in range(self.n_vae)])
+        
+    # which time horizon the VAEs should manage
+    def vae_time_bins(self):
+        # return list of size n_vae + 1. each vae manages one bin
+        time_values = np.array([0.0, 1.5, 5, 10]) * self.time_horizon / 10.
+        n = [7, 6, 3]
+        assert sum(n) == 16, 'must use 16 VAE'
+        time_bins = np.concatenate([np.linspace(time_values[i], time_values[i+1], n[i], endpoint=False) for i in range(len(n))])
+        # add last value going to 10 to define the last bin.
+        time_bins = np.concatenate([time_bins, [self.time_horizon]]) # goes to time horizon 10
+        return time_bins
+
+    # dispatch batch elements in their corresponding bin according to the current timestep
+    def dispatch_batch(self, x_t, t):
+        return [(t <= self.vae_t_bins[i+1]) & (t > self.vae_t_bins[i]) for i in range(len(self.vae_t_bins)-1)]
+    
+    # return bin i for time t
+    def get_bin_t(self, t):
+        assert not (t != t[0]).any(), 'for sampling all t\'s in t batch must be equal'
+        return np.where((t[0] <= self.vae_t_bins[1:]) & (t[0] > self.vae_t_bins[:-1]))[0][0]
+
+    # elbo loss
+    def forward(self, x_t, v_t, t):
+        time_bins_mask = self.dispatch_batch(x_t, t)
+        elbo = torch.zeros_like(t)
+        for i, t_mask in enumerate(time_bins_mask):
+            if t_mask.sum() == 0:
+                # no x_t, v_t in this time bin
+                continue
+            #print('i', i)
+            #print('t_mask', t_mask.shape, len(np.where(t_mask.cpu())[0]))
+            #print('t', t.shape)
+            #print('x_t', x_t.shape)
+            #print('v_t', v_t.shape)
+            #print('x_t_mask', x_t[t_mask].shape)
+            #print('v_t_mask', v_t[t_mask].shape)
+            #print('t_mask', t[t_mask].shape)
+            x_t_mask = x_t[t_mask]
+            v_t_mask = v_t[t_mask]
+            t_masked = t[t_mask]
+            elbo[t_mask] += self.vae_list[i](x_t_mask, v_t_mask, t_masked)
+        return elbo
+    
+    # return v_t
+    def sample(self, x_t, t):
+        #i = self.get_bin_t(t)
+        #return self.vae_list[i].sample(x_t, t)
+        v_t = torch.zeros_like(x_t)
+        time_bins_mask = self.dispatch_batch(x_t, t)
+        for i, t_mask in enumerate(time_bins_mask):
+            if t_mask.sum() == 0:
+                # no x_t, v_t in this time bin
+                continue
+            #print('i', i)
+            #print('t_mask', t_mask.shape, len(np.where(t_mask.cpu())[0]))
+            #print('t', t.shape)
+            #print('x_t', x_t.shape)
+            #print('v_t', v_t.shape)
+            #print('x_t_mask', x_t[t_mask].shape)
+            #print('v_t_mask', v_t[t_mask].shape)
+            #print('t_mask', t[t_mask].shape)
+            x_t_mask = x_t[t_mask]
+            v_t_mask = v_t[t_mask]
+            t_masked = t[t_mask]
+            v_t[t_mask] = self.vae_list[i].sample(x_t_mask, t_masked)
+        return v_t

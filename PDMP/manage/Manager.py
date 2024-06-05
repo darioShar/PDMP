@@ -48,7 +48,8 @@ class Manager:
             # need to set logger to None for the deepcopy
             eval.logger = None
             self.ema_objects = [{
-                'model': Ema.EMAHelper(model, mu = mu),
+                'model': Ema.EMAHelper(self.model, mu = mu),
+                'model_vae': Ema.EMAHelper(self.model_vae, mu = mu) if self.model_vae is not None else None,
                 'eval': copy.deepcopy(eval),
             } for mu in ema_rates]
             #self.ema_evals = [(copy.deepcopy(eval), mu) for mu in ema_rates]
@@ -126,6 +127,7 @@ class Manager:
             self.model_vae.train()
         
         ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None
+        ema_models_vae=[e['model_vae'] for e in self.ema_objects] if self.ema_objects is not None else None
         print('training model to epoch {} from epoch {}'.format(total_epochs, self.epochs), '...')
         is_image = is_image_dataset(self.p['data']['dataset'])
         freeze_vae = False
@@ -150,10 +152,10 @@ class Manager:
                     else:
                         freeze_vae = True
                         self.model_vae.eval()
-                        if (self.total_steps % 2) == 0:
-                            train_type = ['NORMAL'] 
-                        else:
-                            train_type = ['NORMAL_WITH_VAE'] 
+                        #if (self.total_steps % 2) == 0:
+                        #    train_type = ['NORMAL'] 
+                        #else:
+                        train_type = ['NORMAL_WITH_VAE'] 
                     if not is_image:
                         train_type = ['VAE', 'NORMAL']
                 else:
@@ -189,15 +191,17 @@ class Manager:
                 if (self.learning_schedule_vae is not None) and (not freeze_vae):
                     self.learning_schedule_vae.step()
                 # update ema models
-                if ema_models is not None:
-                    for ema in ema_models:
-                        ema.update(self.model)
+                if self.ema_objects is not None:
+                    for e in self.ema_objects:
+                        e['model'].update(self.model)
+                        if e['model_vae'] is not None and not freeze_vae:
+                            e['model_vae'].update(self.model_vae)
                 epoch_loss += loss.item()
                 steps += 1
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
-                if (self.total_steps % 20 == 0):
+                if (self.total_steps % 2 == 0):
                     print('batch_loss', loss.item())
             epoch_loss = epoch_loss / steps
             print('epoch_loss', epoch_loss)
@@ -222,6 +226,7 @@ class Manager:
 
 
     def get_ema_model(self, mu):
+        assert False, 'deprecated'
         for ema_obj in self.ema_objects:
             if ema_obj['model'].mu == mu:
                 return ema_obj['model'].get_ema_model()
@@ -244,9 +249,14 @@ class Manager:
         elif self.ema_objects is not None:
             for ema_obj in self.ema_objects:
                 model = ema_obj['model'].get_ema_model()
+                if ema_obj['model_vae'] is not None:
+                    model_vae = ema_obj['model_vae'].get_ema_model()
+                    model_vae.eval()
+                else:
+                    model_vae = None
                 model.eval()
                 with torch.inference_mode():
-                    ema_obj['eval'].evaluate_model(model, self.model_vae, callback_on_logging = ema_callback_on_logging, **kwargs)
+                    ema_obj['eval'].evaluate_model(model, model_vae, callback_on_logging = ema_callback_on_logging, **kwargs)
 
 
     def training_epochs(self):
@@ -255,9 +265,10 @@ class Manager:
     def training_batches(self):
         return self.total_steps
     
-    def _safe_load_state_dict(self, dest, src):
+    # provide key rather than src[key] in case we load an acient run e.g that did not have vae implemented
+    def _safe_load_state_dict(self, dest, src, key):
         if dest is not None:
-            dest.load_state_dict(src)
+            dest.load_state_dict(src[key])
 
     def _safe_save_state_dict(self, src):
         return src.state_dict() if src is not None else None
@@ -265,14 +276,22 @@ class Manager:
     def load(self, filepath):
         checkpoint = torch.load(filepath, map_location=torch.device(self.noising_process.device))
         self.model.load_state_dict(checkpoint['model_parameters'])
-        self._safe_load_state_dict(self.model_vae, checkpoint['model_vae_parameters'])
+        self._safe_load_state_dict(self.model_vae, checkpoint, 'model_vae_parameters')
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self._safe_load_state_dict(self.optimizer_vae, checkpoint['optimizer_vae'])
-        self._safe_load_state_dict(self.learning_schedule, checkpoint['learning_schedule'])
-        self._safe_load_state_dict(self.learning_schedule_vae, checkpoint['learning_schedule_vae'])
+        self._safe_load_state_dict(self.optimizer_vae, checkpoint, 'optimizer_vae')
+        self._safe_load_state_dict(self.learning_schedule, checkpoint, 'learning_schedule')
+        self._safe_load_state_dict(self.learning_schedule_vae, checkpoint, 'learning_schedule_vae')
         if self.ema_objects is not None:
-            for ema_obj, ema_state in zip(self.ema_objects, checkpoint['ema_models']):
-                ema_obj['model'].load_state_dict(ema_state)
+            if ('ema_models_vae' in checkpoint) and checkpoint['ema_models_vae'] is not None:
+                for ema_obj, ema_state, ema_vae_state in zip(self.ema_objects, checkpoint['ema_models'], checkpoint['ema_models_vae']):
+                    ema_obj['model'].load_state_dict(ema_state)
+                    if ema_obj['model_vae'] is not None:
+                        ema_obj['model_vae'].load_state_dict(ema_vae_state)
+            else:
+                for ema_obj, ema_state, ema_vae_state in zip(self.ema_objects, checkpoint['ema_models'], checkpoint['ema_models_vae']):
+                    ema_obj['model'].load_state_dict(ema_state)
+                    if ema_obj['model_vae'] is not None:
+                        raise Exception('VAE is in EMA mode, but there are no EMA VAE checkpoint to load')
         self.total_steps = checkpoint['steps']
         self.epochs = checkpoint['epoch']
             
@@ -284,6 +303,9 @@ class Manager:
             'optimizer_vae': self._safe_save_state_dict(self.optimizer_vae),
             'ema_models': [ema_obj['model'].state_dict() for ema_obj in self.ema_objects] \
                         if self.ema_objects is not None else None,
+            'ema_models_vae': [ema_obj['model_vae'].state_dict() if ema_obj['model_vae'] is not None else None 
+                                for ema_obj in self.ema_objects] \
+                                if self.ema_objects is not None else None,
             'epoch': self.epochs,
             'steps': self.total_steps,
             'learning_schedule': self._safe_save_state_dict(self.learning_schedule),

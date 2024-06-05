@@ -6,7 +6,7 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 4 # number of workers for data loading
   random_flip: true
-  bs: 64 # batch size
+  bs: 256 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -95,16 +95,23 @@ model:
     time_emb_type: learnable
     x_emb_size: 16
     x_emb_type: mlp # mlp, unet
+    model_type: NSF # NSF, MAF
+
+    model_vae_type: VAE_16 # VAE_1, VAE_16
+    model_vae_t_hidden_width: 128
+    model_vae_t_emb_size: 32
+    model_vae_x_emb_size: 64
   vae: false
 
 training:
   pdmp:
     ema_rates:
     - 0.99
-    grad_clip: null #1.0
+    grad_clip: 1.0 #1.0
     subsamples: 5 # for ZigZag
     train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false
+    beta: 1 # for softplus zigzag
   diffusion:
     ema_rates: 
     - 0.99
@@ -118,7 +125,7 @@ training:
 optim:
   optimizer: adamw
   schedule: null #steplr
-  lr: 0.0005
+  lr: 0.0001
   warmup: 50 #100
   lr_steps: 300000
   lr_step_size: 150

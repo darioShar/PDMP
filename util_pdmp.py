@@ -156,7 +156,25 @@ def update_parameters_before_loading(p, args):
 
     if args.x_embedding_size is not None:
         p['model']['normalizing_flow']['x_emb_size'] = args.x_embedding_size
-        
+    
+    if args.nf_model_type is not None:
+        p['model']['normalizing_flow']['model_type'] = args.nf_model_type
+
+    if args.beta is not None:
+        p['training']['pdmp']['beta'] = args.beta
+    # model vae
+    if args.model_vae_type is not None:
+        p['model']['normalizing_flow']['model_vae_type'] = args.model_vae_type
+
+    if args.vae_t_embedding_hidden_width is not None:
+        p['model']['normalizing_flow']['vae_t_emb_hidden_width'] = args.vae_t_embedding_hidden_width
+
+    if args.vae_t_embedding_size is not None:
+        p['model']['normalizing_flow']['vae_t_emb_size'] = args.vae_t_embedding_size
+
+    if args.vae_x_embedding_size is not None:
+        p['model']['normalizing_flow']['vae_x_emb_size'] = args.vae_x_embedding_size
+
     return p
 
 def update_experiment_after_loading(exp, args):
@@ -240,7 +258,14 @@ def parse_args():
     parser.add_argument('--t_embedding_size', help='choose time embedding size', default = None, type = int)
     parser.add_argument('--x_embedding_type', help='choose x embedding type', default = None, type = str)
     parser.add_argument('--x_embedding_size', help='choose x embedding size', default = None, type = int)
+    parser.add_argument('--nf_model_type', help='Choose normalizing_flow model type', default = None, type = str)
+    parser.add_argument('--beta', help='for softplus zigzag', default = None, type = float)
 
+    # model vae
+    parser.add_argument('--model_vae_type', help='Choose VAE normalizing_flow model type (1 or 16)', default = None, type = str)
+    parser.add_argument('--vae_t_embedding_hidden_width', help='Choose VAE normalizing_flow time embedding hidden layer size', default = None, type = int)
+    parser.add_argument('--vae_t_embedding_size', help='Choose VAE normalizing_flow time embedding output size', default = None, type = int)
+    parser.add_argument('--vae_x_embedding_size', help='Choose VAE normalizing_flow x embedding output size', default = None, type = int)
 
     # now for pdmp
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)

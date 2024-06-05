@@ -188,6 +188,7 @@ class Eval:
                                             128, # batch size
                                             self.noising_process.device, 
                                             num_workers= 4 if self.is_image else 0)
+            print(eval_results['fid'])
             print('prdc')
             # precision, recall density, coverage
             prdc_value = prdc(self.real_data_path, 

@@ -8,26 +8,24 @@ data:
   isotropic: true
   n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
-  normalized: true #true
+  normalized: false #true
   nsamples: 100000
-  bs: 4096 # batch size
+  bs: 2048 # batch size
   num_workers: 0 # number of workers for data loading
-  std: 0.05
-  theta: 1.
+  std: 0.1
+  theta: 0.5
   weights:
-  #- 0.1
-  #- 0.4
-  #- 0.4
-  #- 0.1
-  - 0.01
-  - 0.1
-  - 0.3
-  - 0.2
-  - 0.02
-  - 0.15
-  - 0.02
-  - 0.15
   - 0.05
+  - 0.95
+  #- 0.01
+  #- 0.1
+  #- 0.3
+  #- 0.2
+  #- 0.02
+  #- 0.15
+  #- 0.02
+  #- 0.15
+  #- 0.05
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -54,6 +52,10 @@ pdmp:
   #- kl
   #- logistic
 
+nf:
+  placeholder:  # need to define a placeholder
+
+
 eval:
   data_to_generate: 10000
   batch_size: 128
@@ -73,6 +75,8 @@ eval:
     ddim: false
     eta: 1.0
     #new_time_spacing
+  nf:
+    placeholder:
 
 model:
   # this is for 2d ZigZag, and 2d diffusion
@@ -99,9 +103,16 @@ model:
     time_emb_size: 8
     x_emb_size: 8
     x_emb_type: mlp
+
+    model_type: NSF
     #flow_blocks: 8
   vae: false
-
+  nf:
+    transforms: 8
+    hidden_width: 256
+    hidden_depth: 8
+    model_type: NSF
+    #flow_blocks: 8
 training:
   pdmp:
     ema_rates: null
@@ -117,6 +128,8 @@ training:
     lploss: 2.
     monte_carlo_steps: 1 # for each t, x_0, z_t, number of different a_t_1, a_t' to generate
     monte_carlo_groups: 1 # number groups: will take median of means of monte_carlo_groups of a's
+  nf:
+    placeholder:
 
 optim:
   optimizer: adamw

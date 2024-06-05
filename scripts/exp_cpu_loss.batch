@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#SBATCH --job-name=PDMP    # create a short name for your job
+#SBATCH --nodes=1                # node count
+#SBATCH --ntasks=1               # total number of tasks across all nodes
+#SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --partition=cpu_homogen          # Name of the partition
+## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --mem=20G                # Total memory allocated
+# ### ### SBATCH --hint=multithread       # we get physical cores not logical
+#SBATCH --output=./log/%x_%j.out   # output file name
+#SBATCH --array=0-4              # job array index
+
+exp_number=$SLURM_ARRAY_TASK_ID
+
+echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
+
+set -x
+cd ${SLURM_SUBMIT_DIR}
+
+module purge
+module load cuda/11.4.0
+
+source /home/$USER/.bashrc
+conda activate diffusion
+
+epochs=300
+
+samplers=('BPS' 'HMC')
+refresh_rates=(1.0 1.0)
+
+#for i in $(seq 0 $((${#samplers[@]} - 1))) ; do
+#
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --kl_loss
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --logistic_loss
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --ml_loss --square_loss
+#    
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --kl_loss
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --logistic_loss
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --square_loss
+#
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --hyvarinen --ml_loss
+#
+#    python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate ${refresh_rates[${i}]} --logistic_loss
+#done
+
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_loss_$exp_number --epochs $epochs --eval 50 --reverse_steps 100 --noising_process pdmp --sampler BPS --refresh_rate 1.0 --ml_loss --logistic_loss --hyvarinen_loss
