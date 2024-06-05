@@ -419,7 +419,7 @@ class LevyDiffusion:
                 pbar.close()
                 tqdm._instances.clear()
             if get_sample_history:
-                return final['sample'], x_hist
+                return torch.stack(x_hist)
             return final["sample"]
 
     def p_sample_loop_progressive(

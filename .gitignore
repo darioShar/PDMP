@@ -1,10 +1,20 @@
 .ipynb_checkpoints
 .neptune/**
+
 **__pycache__**
 **/__pycache__
 __pycache__
 **.__pycache__**
-**.pyc
+
+**pyc**
+**/pyc
+pyc
+**.pyc**
+
+**cpython**
+**/cpython
+cpython
+**.cpython**
 
 data/**
 eval_files/**

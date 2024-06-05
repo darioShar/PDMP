@@ -255,10 +255,12 @@ def _unet_model(p, p_model_unet):
         raise ValueError(f"unsupported image size: {image_size}")
     '''
 
-    learn_gamma = p_model_unet['compute_gamma']
     channels = p['data']['channels']
-    out_channels = 2 #(channels if (not learn_gamma) or (not (p['pdmp']['sampler'] == 'ZigZag')) else 2*channels)
-    print(p['pdmp']['sampler'], out_channels)
+    if p['pdmp']['sampler'] == 'ZigZag':
+        out_channels = 2*channels #(channels if (not learn_gamma) or (not (p['pdmp']['sampler'] == 'ZigZag')) else 2*channels)
+    else:
+        out_channels = channels
+    
     model = unet.UNetModel(
             in_channels=channels,
             model_channels=p_model_unet['model_channels'],
@@ -267,13 +269,16 @@ def _unet_model(p, p_model_unet):
             attention_resolutions=p_model_unet['attn_resolutions'],# tuple([2, 4]), # adds attention at image_size / 2 and /4
             dropout= p_model_unet['dropout'],
             channel_mult= p_model_unet['channel_mult'], # divides image_size by two at each new item, except first one. [i] * model_channels
-            dims = 2,
+            dims = 2, # for images
             num_classes= None,#(NUM_CLASSES if class_cond else None),
             use_checkpoint=False,
             num_heads=p_model_unet['num_heads'],
             num_heads_upsample=-1, # same as num_heads
             use_scale_shift_norm=True,
+            beta = p_model_unet['beta'] if p['pdmp']['sampler'] == 'ZigZag' else None,
+            threshold = p_model_unet['threshold'] if p['pdmp']['sampler'] == 'ZigZag' else None
         )
+
     return model
 
 def model_param_to_use(p):
@@ -297,20 +302,20 @@ def init_model_by_parameter(p):
     if not is_image_dataset(p['data']['dataset']):
         # model
         if method in ['diffusion', 'ZigZag']:
-            model = Model.LevyDiffusionModel(nfeatures = p['data']['dim'],
-                                             device=p['device'], 
-                                             p_model_mlp=model_param,
-                                             noising_process=method)
+            model = Model.MLPModel(nfeatures = p['data']['dim'],
+                                    device=p['device'], 
+                                    p_model_mlp=model_param,
+                                    noising_process=method)
         elif method == 'nf':
             type = model_param['model_type']
             nfeatures = p['data']['dim']
             if type == 'NSF':
-                model = zuko.flows.NSF(nfeatures, # generates V_t
+                model = zuko.flows.NSF(nfeatures,
                                0,
                                transforms=model_param['transforms'], #3
                                 hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
             elif type == 'MAF':
-                model = zuko.flows.MAF(nfeatures, # generates V_t  
+                model = zuko.flows.MAF(nfeatures,
                                0,
                                transforms=model_param['transforms'], #3
                                 hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
@@ -324,10 +329,6 @@ def init_model_by_parameter(p):
             model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                          device=p['device'], 
                                                          p_model_normalizing_flow=p['model']['normalizing_flow'])
-            #model = zuko.flows.NSF(p['data']['dim'], # generates V_t
-            #                       p['data']['dim'] + 1,  # takes X_t, t as conditioning
-            #                       transforms=model_param['transforms'], #3, 
-            #                       hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     else:
         if method in ['diffusion', 'ZigZag']:
             model = _unet_model(p, p_model_unet = model_param)
@@ -338,10 +339,6 @@ def init_model_by_parameter(p):
                                                          device=p['device'], 
                                                          p_model_normalizing_flow=p['model']['normalizing_flow'],
                                                          unet=_unet_model(p, p_model_unet=p['model']['unet']))
-            #model = zuko.flows.NSF(data_dim, # generates V_t
-            #                       data_dim + 16,  # takes X_t, t as conditioning
-            #                       transforms=model_param['transforms'], #3, 
-            #                       hidden_features= [model_param['hidden_width']] * model_param['hidden_depth'] ) #[128] * 3)
     return model.to(p['device'])
 
 def init_model_vae_by_parameter(p):
@@ -365,7 +362,7 @@ def init_model_vae_by_parameter(p):
 def init_data_by_parameter(p):
     # get the dataset
     dataset_files, test_dataset_files = get_dataset(p)
-    print(len(dataset_files), dataset_files[0])
+    
     # implement DDP later on
     data = DataLoader(dataset_files, 
                       batch_size=p['data']['bs'], 
@@ -439,16 +436,17 @@ def init_ls_by_parameter(optim, p):
 
 
 def init_generation_manager_by_parameter(noising_process, dataloader, p):
+    # here kwargs is passed to the underlying Generation Manager.
+    kwargs = p['eval'][p['noising_process']]
+
     return Gen.GenerationManager(noising_process, 
                                  #reverse_steps=p['eval'][p['noising_process']]['reverse_steps'], 
                                  dataloader=dataloader, 
-                                 is_image = is_image_dataset(p['data']['dataset']))
+                                 is_image = is_image_dataset(p['data']['dataset']),
+                                 **kwargs)
 
 
 def init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_path, real_data_path, p):
-
-    # here kwarsg is passed to evaluate function, and to the underlying Generation Manager.
-    kwargs = p['eval'][p['noising_process']]
 
     eval = Eval.Eval( 
             noising_process=noising_process,
@@ -460,8 +458,7 @@ def init_eval_by_parameter(noising_process, gen_manager, data, logger, gen_data_
             batch_size = p['eval']['batch_size'],
             is_image = is_image_dataset(p['data']['dataset']),
             gen_data_path=gen_data_path,
-            real_data_path=real_data_path,
-            **kwargs
+            real_data_path=real_data_path
     )
     return eval
 

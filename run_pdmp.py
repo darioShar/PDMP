@@ -14,8 +14,7 @@ if __name__ == '__main__':
     
     update_parameters_before_loading(p, args)
 
-    # create experiment object. Specify directory to save and load checkpoints,
-    # experiment parameters, and potential logger object
+    # create experiment object. Specify directory to save and load checkpoints, experiment parameters, and potential logger object
     exp = Exp.Experiment(os.path.join('models', args.name), 
                          p, 
                          logger = Logger.NeptuneLogger() if args.log else None)
@@ -30,15 +29,8 @@ if __name__ == '__main__':
     else:
         exp.prepare()
     
-    # if config file has changed, update that
-    # TODO: check if the config file has changed and update run parameters
-    # ex: will not change optimizer for the moment, will use the checkpointed one.
-    # change some parameters before the run.
     update_experiment_after_loading(exp, args)
-    
     additional_logging(exp, args)
-
-    # print parameters
     exp.print_parameters()
     
     # run the experiment
@@ -49,7 +41,7 @@ if __name__ == '__main__':
         )
     
     # in any case, save last models.
-    print(exp.save(curr_epoch=p['run']['epochs'])) #curr_epoch=p['run']['epochs']
+    print(exp.save(curr_epoch=p['run']['epochs']))
     
     # close everything
     exp.terminate()

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 import shutil
 
-''' Blocks; either simple, time conditioned, or time and a_t's conditioned'''
+''' Blocks; either simple, time conditioned, or time conditioned'''
 
 # can add batch norm and dropout
 class DiffusionBlock(nn.Module):
@@ -92,14 +92,12 @@ class DiffusionBlockConditioned(nn.Module):
                  skip_connection, 
                  group_norm,
                  time_emb_size = False, 
-                 a_emb_size = False,
                  activation = nn.SiLU):
         super(DiffusionBlockConditioned, self).__init__()
         
         self.skip_connection = skip_connection # boolean
         self.act = activation(inplace=False)
         self.time = time_emb_size != False
-        self.a = a_emb_size != False
         
         # for the moment, implementing as batch norm
         self.group_norm1 = nn.LayerNorm([nunits]) if group_norm else nn.Identity()
@@ -114,22 +112,16 @@ class DiffusionBlockConditioned(nn.Module):
             self.t_proj = nn.Sequential(self.dropout, 
                                         nn.Linear(time_emb_size, nunits), 
                                         self.act)
-        if self.a:
-            self.a_proj = nn.Sequential(self.dropout, 
-                                        nn.Linear(a_emb_size, nunits), 
-                                        self.act)
         self.mlp_2 = nn.Sequential(self.dropout, 
                                    nn.Linear(nunits, nunits), 
                                    self.group_norm2)
         
-    def forward(self, x: torch.Tensor, t_emb: torch.Tensor, a_emb:torch.Tensor):
+    def forward(self, x: torch.Tensor, t_emb: torch.Tensor):
         if self.skip_connection:
             x_skip = x
         x = self.act(self.mlp_1(x))
         if self.time:
             x += self.t_proj(t_emb) 
-        if self.a:
-            x += self.a_proj(a_emb)
         x = self.mlp_2(x)
         if self.skip_connection:
             x = x + x_skip

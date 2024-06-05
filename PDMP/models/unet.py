@@ -312,6 +312,8 @@ class UNetModel(nn.Module):
         num_heads=1,
         num_heads_upsample=-1,
         use_scale_shift_norm=False,
+        beta = None,
+        threshold = None
     ):
         super().__init__()
 
@@ -435,6 +437,12 @@ class UNetModel(nn.Module):
             zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
         )
 
+        if beta is not None:
+            print('Using Softplus activation on the final layer')
+            self.out_act = nn.Softplus(beta = beta, threshold=threshold)
+        else:
+            self.out_act = nn.Identity()
+
 
 
     def convert_to_fp16(self):
@@ -489,7 +497,8 @@ class UNetModel(nn.Module):
             cat_in = th.cat([h, hs.pop()], dim=1)
             h = module(cat_in, emb)
         h = h.type(x.dtype)
-        return self.out(h)
+        h = self.out(h)
+        return self.out_act(h)
 
     def get_feature_vectors(self, x, timesteps, y=None):
         """

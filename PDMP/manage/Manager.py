@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import PDMP.compute.TrainLoop as TrainLoop
+import PDMP.compute.TrainLoop_old as TrainLoop_old
 import PDMP.models.Ema as Ema
 import copy
 from PDMP.datasets import is_image_dataset
@@ -201,8 +201,6 @@ class Manager:
                 self.total_steps += 1
                 if batch_callback is not None:
                     batch_callback(loss.item())
-                if (self.total_steps % 2 == 0):
-                    print('batch_loss', loss.item())
             epoch_loss = epoch_loss / steps
             print('epoch_loss', epoch_loss)
             self.epochs += 1
@@ -218,10 +216,8 @@ class Manager:
             
             # now potentially eval
             if (eval_freq is not None) and  (self.epochs % eval_freq) == 0:
-                print('starting evaluation of the model:')
                 self.evaluate()
                 if not no_ema_eval:
-                    print('starting evaluation of the EMAs:')
                     self.evaluate(evaluate_emas=True)
 
 
@@ -236,19 +232,85 @@ class Manager:
                 #return new_ema_model
         raise ValueError('No EMA model with mu = {}'.format(mu))
 
+    def display_plots(self, 
+                   ema_mu = None, 
+                   title = None,
+                   nb_datapoints = 10000,
+                   marker = '.',
+                   color='blue',
+                   plot_original_data=False,
+                   xlim = (-0.5, 1.5),
+                   ylim = (-0.5, 1.5),
+                   alpha = 0.5):
+        # loading the right model
+        model = None
+        if ema_mu is not None:
+            if self.ema_objects is not None:
+                for ema_obj in self.ema_objects:
+                    if ema_obj['model'].mu == ema_mu:
+                        model = ema_obj['model'].get_ema_model()
+                        model.eval
+                    if ema_obj['model_vae'] is not None:
+                        model_vae = ema_obj['model_vae'].get_ema_model()
+                        model_vae.eval()
+                    else:
+                        model_vae = None
+        else:
+            model = self.model
+            model.eval()
+        
+        assert model is not None, 'ema_mu={} has not been found'.format(ema_mu)
 
+        # number of samples to draw
+        nsamples = 1 if self.eval.is_image else nb_datapoints
+        print('Generating {} datapoints'.format(nsamples))
+
+        # generate images
+        with torch.inference_mode():
+            gen_manager = self.eval.generate_default(self.model,
+                                    self.model_vae,
+                                    nsamples,
+                                    get_sample_history = True,
+                                    print_progression = True)
+        
+        # get and display plots
+        if self.eval.is_image:
+            gen_manager.get_image(black_and_white=True, title=title)
+        else:
+            gen_manager.get_plot(plot_original_data=plot_original_data,
+                                 limit_nb_datapoints = nb_datapoints,
+                                 title=title, 
+                                 marker = marker, 
+                                 color=color, 
+                                 xlim=xlim, 
+                                 ylim=ylim,
+                                 alpha=alpha)
+        plt.show(block=False)
+        anim = gen_manager.get_animation(plot_original_data=plot_original_data,
+                                  limit_nb_datapoints=nb_datapoints,
+                                  title=title, 
+                                  marker = marker, 
+                                  color=color, 
+                                  xlim=xlim, 
+                                  ylim=ylim,
+                                  alpha=alpha)
+        plt.show(block=False)
+        return anim
+    
     def evaluate(self, evaluate_emas = False, **kwargs):
         def ema_callback_on_logging(logger, key, value):
             if not (key in ['losses', 'losses_batch']):
                 logger.log('_'.join(('ema', str(ema_obj['model'].mu), str(key))), value)
         
         if not evaluate_emas:
+            print('evaluating model')
             self.model.eval()
             with torch.inference_mode():
                 self.eval.evaluate_model(self.model, self.model_vae, **kwargs)
         elif self.ema_objects is not None:
             for ema_obj in self.ema_objects:
                 model = ema_obj['model'].get_ema_model()
+                print('evaluating ema model with mu={}'.format(ema_obj['model'].mu))
                 if ema_obj['model_vae'] is not None:
                     model_vae = ema_obj['model_vae'].get_ema_model()
                     model_vae.eval()
@@ -257,7 +319,6 @@ class Manager:
                 model.eval()
                 with torch.inference_mode():
                     ema_obj['eval'].evaluate_model(model, model_vae, callback_on_logging = ema_callback_on_logging, **kwargs)
-
 
     def training_epochs(self):
         return self.epochs

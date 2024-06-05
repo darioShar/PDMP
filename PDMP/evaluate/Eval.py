@@ -1,12 +1,14 @@
 import numpy as np
 import torch
-import PDMP.manage.Generate as Gen
+import matplotlib.pyplot as plt
+import os 
+import copy
+from pathlib import Path
+
 from .fid_score import fid_score, prdc
 import torchvision.utils as tvu
 from .wasserstein import compute_wasserstein_distance
 from .prd_legacy import compute_precision_recall_curve, compute_f_beta
-import os 
-from pathlib import Path
 from .mmd_loss import get_MMD, MMD_loss, MMD
 
 def check_dict_eq(dic1, dic2):
@@ -87,9 +89,14 @@ class Eval:
         if self.logger is not None:
             self.logger.log('losses', epoch_loss)
 
+    # uses default parameters for generation. Return generation manager
+    def generate_default(self, model, model_vae, nsamples, **kwargs):
+        self.gen_manager.generate(model, model_vae, nsamples, **kwargs)
+        return self.gen_manager
+
     # little workaround to enable arbitrary number of kwargs to be specified beforehand
     def evaluate_model(self, model, model_vae, **kwargs):
-        tmp_kwargs = self.kwargs
+        tmp_kwargs = copy.deepcopy(self.kwargs)
         tmp_kwargs.update(kwargs)
         self._evaluate_model(model, model_vae, **tmp_kwargs)
 
@@ -219,6 +226,7 @@ class Eval:
             else:
                 fig = None
         eval_results['fig'] = fig
+        plt.close(fig)
 
         if self.logger is not None:
             for k, v in eval_results.items():

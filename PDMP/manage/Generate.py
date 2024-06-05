@@ -1,7 +1,9 @@
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import numpy as np
 import os
+import copy
 from PDMP.datasets import inverse_affine_transform
 #from IPython.display import HTML
 
@@ -15,10 +17,12 @@ class GenerationManager:
                  noising_process,
                  dataloader,
                  is_image,
+                 **kwargs
                  ):
         self.noising_process = noising_process
         self.original_data = dataloader
         self.is_image = is_image
+        self.kwargs = kwargs
         self.samples = []
         self.history = []
 
@@ -32,10 +36,12 @@ class GenerationManager:
                  print_progression=True,
                  **kwargs
                  ):
-        
+        tmp_kwargs = copy.deepcopy(self.kwargs)
+        tmp_kwargs.update(kwargs)
+
         _, (data, y) = next(enumerate(self.original_data))
         size = list(data.size())
-        size[0] = nsamples 
+        size[0] = nsamples
         x = self.noising_process.reverse_sampling(shape=size,
                                                   model = model,
                                                   model_vae = model_vae,
@@ -43,7 +49,7 @@ class GenerationManager:
                                                   initial_data = use_samples,
                                                   print_progression = print_progression,
                                                   get_sample_history = get_sample_history,
-                                                  **kwargs)
+                                                  **tmp_kwargs)
         # store samples and possibly history on cpu
         #assert data.shape[-1] == 2, 'only 2d data supported for the moment.'
         if get_sample_history:
@@ -51,7 +57,7 @@ class GenerationManager:
             samples = hist[-1, ..., :data.shape[-1]]
             self.history = [h[..., :data.shape[-1]].cpu() for h in hist]
             if self.is_image:
-                self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform                
+                self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform
         else:
             samples = x[..., :data.shape[-1]] # select positions in case of pdmp
         # as done in LIM, clamp to -1, 1
@@ -64,6 +70,17 @@ class GenerationManager:
         if self.is_image:
             self.samples = inverse_affine_transform(self.samples)
 
+    def load_original_data(self, nsamples):
+        data_size = 0
+        total_data = torch.tensor([])
+        while data_size < nsamples:
+            _, (data,y) = next(enumerate(self.original_data))
+            if self.is_image:
+                data = inverse_affine_transform(data)
+            total_data = torch.concat([total_data, data])
+            data_size += data.size()[0]
+        return total_data[:nsamples]
+    
 
 
     def get_image(self, 
@@ -86,96 +103,103 @@ class GenerationManager:
             img.repeat(1, 1, 3)
         fig = plt.figure()
         plt.imshow(img, animated = animated)
-        plt.close(fig)
         return fig
     
     def get_plot(self, 
                  plot_original_data = True, 
-                 limit_nb_orig_data = 10000,
-                xlim = None, ylim = None,
-                title= None):
+                 limit_nb_datapoints = 10000,
+                 title= None,
+                 marker = '.',
+                 color='blue',
+                 xlim = None, 
+                 ylim = None,
+                 alpha = 0.5
+                 ):
         
-        original_data = self.load_original_data(limit_nb_orig_data)
+        original_data = self.load_original_data(limit_nb_datapoints)
         original_data = original_data.squeeze(1) # remove channel since simple 2d data
         gen_data = self.samples
         gen_data = gen_data.squeeze(1) # remove channel
         fig = plt.figure()
         if plot_original_data:
-            self._plot_data(original_data, limit_nb_orig_data)
-        self._plot_data(gen_data[:limit_nb_orig_data])#, marker='+')
+            self._plot_data(original_data[:limit_nb_datapoints], label='Original data', marker=marker, color='orange', alpha=alpha)
+        self._plot_data(gen_data[:limit_nb_datapoints], label='Generated data', marker=marker, color=color, alpha=alpha)  # marker='+'
         if xlim is not None:
             plt.xlim(xlim) 
         if ylim is not None:
             plt.ylim(ylim)
-        if plot_original_data:
-            plt.legend(["Original data", "Generated data"])
-        else:
-            plt.legend('Generated data')
         if title is not None:
             plt.title(title)
-        plt.close(fig)
+        plt.legend()
         return fig
     
-    def _plot_data(self, data, limit=None, marker=',', animated=False):
-        if limit is not None:
-            limit = data.shape[0]
-        if data.shape[1] == 1:
-            fig = plt.scatter(data[:limit, 0], torch.zeros(data.shape[0]), 
-                        marker=marker, alpha = .5, lw=0, s=1, animated=animated)
-        else:
-            fig = plt.scatter(data[:limit, 0], data[:limit, 1], 
-                        marker=marker, alpha=0.5, lw=0, s=1, animated = animated)
+    def _get_scatter_marker_specific_kwargs(self, marker):
+        if marker == '.':
+            return {'marker': marker, 'lw': 0, 's': 1}
+        return {'marker': marker}
+
+    
+    def _plot_data(self, data, marker='.', animated=False, label=None, ax=None, color=None, alpha=0.5):
+        assert data.shape[1] == 2, 'only supports plotting 2d data'
+        canvas = plt if ax is None else ax 
+        fig = canvas.scatter(data[:, 0], data[:, 1], alpha=alpha, animated = animated, label=label, color=color, **self._get_scatter_marker_specific_kwargs(marker))
         return fig
-    
-    def load_original_data(self, nsamples):
-        data_size = 0
-        total_data = torch.tensor([])
-        while data_size < nsamples:
-            _, (data,y) = next(enumerate(self.original_data))
-            if self.is_image:
-                data = inverse_affine_transform(data)
-            total_data = torch.concat([total_data, data])
-            data_size += data.size()[0]
-        return total_data[:nsamples]
-    
-    def animation(self,
-                  generated_data_name = "undefined_distribution",
-                plot_original_data = True, 
-                filepath = SAVE_ANIMATION_PATH, 
-                xlim = (-2.5, 2.5), ylim = (-2.5, 2.5),
-                limit_nb_orig_data = 1000):
+
+    def get_animation(self, 
+                      plot_original_data = False,
+                      limit_nb_datapoints = 10000,
+                      title = None,
+                      marker = '.',
+                      color = 'blue',
+                      xlim = (-1.1, 1.1), 
+                      ylim = (-1.1, 1.1),
+                      alpha = 0.5
+                      ):
         if plot_original_data:
-            original_data = self.load_original_data(limit_nb_orig_data)
+            original_data = self.load_original_data(limit_nb_datapoints)
             original_data = original_data.squeeze(1)
         
+        fig, ax = plt.subplots()  # Create a figure and axes once.
+        #if title is not None:
+        #    plt.title(title)
+
+        scatter = ax.scatter([], [], alpha=alpha, animated=True, color=color, **self._get_scatter_marker_specific_kwargs(marker))
+        scatter_orig = ax.scatter([], [], alpha=alpha, animated=True, color='orange', **self._get_scatter_marker_specific_kwargs(marker))
+
+        def init_frame():
+            #ax.clear()  # Clear the current axes.
+            ax.set_xlim(xlim)  # Set the limit for x-axis.
+            ax.set_ylim(ylim)  # Set the limit for y-axis.
+            ax.set_title(title)
+            scatter.set_offsets(np.empty((0, 2)))  # Properly shaped empty array
+            scatter_orig.set_offsets(np.empty((0, 2)))  # Properly shaped empty array
+            return scatter, scatter_orig, 
+        
         def draw_frame(i):
-            plt.clf()
-            Xvis = self.history[i].cpu().squeeze(1)
+            #ax.clear()
+            Xvis = self.history[i].cpu().squeeze(1)[:limit_nb_datapoints]
             if self.is_image:
-                # only plot successive images, no original data
-                fig = self._get_image_from(Xvis, animated=True)
+                fig = self._get_image_from([Xvis], animated=True)
             else:
+                scatter.set_offsets(Xvis)
                 if plot_original_data:
-                    fig = self._plot_data(original_data, limit_nb_orig_data, 
-                                    marker = '.', animated=True)
-                
-                    self._plot_data(Xvis, 
-                                marker = '.', animated=True)
-                else:
-                    fig = self._plot_data(Xvis, 
-                                marker = '.', animated=True)
-                plt.xlim(xlim)
-                plt.ylim(ylim)
-            return fig,
+                    scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
+                    return scatter, scatter_orig, 
+            return scatter, 
+        
+        # 2500 ms per loop
+        anim = animation.FuncAnimation(fig, draw_frame, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame)
+        return anim
 
-
-        fig = plt.figure()
-        # 30 fps, 33ms
-        anim = animation.FuncAnimation(fig, draw_frame, frames=len(self.history), interval=33, blit=True)
-        path = os.path.join(filepath, 
-                            generated_data_name+ '.mp4')
-        anim.save(path, fps=30)
-        return path
+    def save_animation(self,
+                       anim,
+                       generated_data_name = "undefined_distribution",
+                       filepath = SAVE_ANIMATION_PATH,
+                        ):
+        path = os.path.join(filepath, generated_data_name + '.mp4')
+        anim.save(path)
+        print('animation saved in {}'.format(path))
+        return anim
     
     
     

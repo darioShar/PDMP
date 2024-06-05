@@ -4,13 +4,11 @@ from PDMP.manage.exp_utils import init_ls_by_parameter, hash_parameters, hash_pa
 
 CONFIG_PATH = 'PDMP/configs'
 
-def update_parameters_before_loading(p, args):
-    # These parameters should be changed for this specific run, before objects are loaded
 
+# These parameters should be changed for this specific run, before objects are loaded
+def update_parameters_before_loading(p, args):
     if args.noising_process is not None:
         p['noising_process'] = args.noising_process
-
-    # DIFFUSION
         
     # if alpha is specified, change the parameter, etc.
     if args.alpha is not None:
@@ -42,12 +40,6 @@ def update_parameters_before_loading(p, args):
 
     if args.lploss is not None:
         p['training']['lploss'] = args.lploss
-
-    if args.gmm is not None:
-        p['data']['dataset'] = 'gmm_grid'
-    
-    if args.stable is not None:
-        p['data']['dataset'] = 'sas_grid'
 
     if args.variance:
         p['diffusion']['var_predict'] = 'GAMMA'
@@ -100,23 +92,13 @@ def update_parameters_before_loading(p, args):
         p['eval']['pdmp']['backward_scheme'] = args.scheme
     
     add_losses = set(p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [])
-    if args.square_loss is not None:
-        add_losses.add('square')
-    if args.kl_loss is not None:
-        add_losses.add('kl')
-    if args.logistic_loss is not None:
-        add_losses.add('logistic')
-    if args.ml_loss is not None:
-        add_losses.add('ml')
-    if args.hyvarinen_loss is not None:
-        add_losses.add('hyvarinen')
+    for l in args.loss:
+        add_losses.add(l)
     p['pdmp']['add_losses'] = sorted(list(add_losses))
 
     if args.exponent is not None:
         p['eval']['pdmp']['exponent'] = args.exponent
 
-    if args.subsamples is not None:
-        p['training']['pdmp']['subsamples'] = args.subsamples
 
     if args.vae is not None:
         p['model']['vae'] = args.vae
@@ -177,10 +159,10 @@ def update_parameters_before_loading(p, args):
 
     return p
 
+
+# change some parameters for the run.
+# These parameters should act on the objects already loaded from the previous runs
 def update_experiment_after_loading(exp, args):
-    # change some parameters for the run.
-    # These parameters should act on the objects already loaded from  the previous runs
-    
     # scheduler
     schedule_reset = False 
     if args.lr is not None:
@@ -196,6 +178,7 @@ def update_experiment_after_loading(exp, args):
         lr_scheduler = init_ls_by_parameter(exp.manager.optimizer, exp.p)
         exp.manager.learning_schedule = lr_scheduler
 
+# some additional logging 
 def additional_logging(exp, args):
     # logging job id
     if (exp.manager.logger is not None) and (args.job_id is not None):
@@ -214,41 +197,54 @@ def additional_logging(exp, args):
         exp.manager.logger.log('starting_epoch', exp.manager.training_epochs())
         exp.manager.logger.log('starting_batch', exp.manager.training_batches())
 
+
+# define and parse the arguments
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--noising_process", help='noising process to use', default=None, type=str)
+    # processes to choose from. Either diffusion, pdmp, or 'nf' to use a normal normalizing flow.
+    parser.add_argument("--noising_process", help='noising process to use', default=None, type=str, choices=['diffusion', 'pdmp', 'nf'])
 
-    # diffusion
-    parser.add_argument('-r', "--resume", help="resume existing experiment", action='store_true', default=False)
-    parser.add_argument("--config", help='config file', type=str, required=True)
-    parser.add_argument("--name", help='name of the experiment', type=str, required=True)
-    parser.add_argument('--lr', help='reinitialize learning rate', type=float, default = None)
-    parser.add_argument('--lr_steps', help='reinitialize learning rate steps', type=int, default = None)
-    parser.add_argument('--log', help='activate logging', action='store_true', default=False)
-    parser.add_argument('--job_id', help='slurm job id', default=None, type = str)
-    parser.add_argument('--alpha', help='alpha value to train for', default=None, type = float)
+    # EXPERIMENT parameters, specific to TRAINING
+    parser.add_argument("--config", help='config file to use', type=str, required=True)
+    parser.add_argument("--name", help='name of the experiment. Defines save location: ./models/name/', type=str, required=True)
     parser.add_argument('--epochs', help='epochs', default=None, type = int)
+    parser.add_argument('-r', "--resume", help="resume existing experiment", action='store_true', default=False)
+    parser.add_argument('--resume_epoch', help='epoch from which to resume', default = None, type=int)
     parser.add_argument('--eval', help='evaluation frequency', default=None, type = int)
     parser.add_argument('--check', help='checkpoint frequency', default=None, type = int)
-    parser.add_argument('--n_max_batch', help='max batch per epoch (speed up testing)', default=None, type = int)
-    parser.add_argument('--no_ema_eval', help='dont evaluate ema models', action='store_true', default = False)
-    parser.add_argument('--LIM', help='activate LIM training/sampling', action='store_true', default = False)
-    parser.add_argument('--non_iso', help='use non isotropic noise in the diffusion', action='store_true', default = False)
-    parser.add_argument('--non_iso_data', help='use non isotropic data', action='store_true', default = False)
-    parser.add_argument('--median', help='use median of mean. Specify (total samples, number of groups). Must have total%groups==0', nargs ='+', default = None)
+    parser.add_argument('--n_max_batch', help='max batch per epoch (to speed up testing)', default=None, type = int)
+
     parser.add_argument('--set_seed', help='set random seed', default = None, type=int)
     parser.add_argument('--random_seed', help='set random seed to a random number', action = 'store_true', default=None)
-    parser.add_argument('--lploss', help='set p in lploss', default = None, type = float)
-    parser.add_argument('--variance', help='learn variance', default = False, action='store_true')
-    parser.add_argument('--resume_epoch', help='epoch from which to resume', default = None, type=int)
+
+    parser.add_argument('--log', help='activate logging to neptune', action='store_true', default=False)
+    parser.add_argument('--job_id', help='slurm job id', default=None, type = str)
+
+    # if training together with a VAE
+    parser.add_argument('--train_type', help='Which training to use', default = None, type=str)
+    parser.add_argument('--train_alternate', help='altenrate normal and normal_with_vae training', default = None, action='store_true')
+
+
+    # EXPERIMENT parameters, specific to EVALUATION
+    parser.add_argument('--ema_eval', help='evaluate all ema models', action='store_true', default = False)
+    parser.add_argument('--no_ema_eval', help='dont evaluate ema models', action='store_true', default = False)
     parser.add_argument('--generate', help='how many images/datapoints to generate', default = None, type = int)
-    parser.add_argument('--gmm', help='if 2d data, loads a gmm', default = None, action='store_true')
-    parser.add_argument('--stable', help='if 2d data, loads a stable mm', default = None, action='store_true')
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
+    parser.add_argument('--exponent', help='exponent in reverse_steps', default = None, type = float)
+    parser.add_argument('--reset_eval', help='reset evaluation metrics', action='store_true', default = False)
+
+    parser.add_argument('--ddim', help='use ddim for sampling (diffusion)', default = False, action='store_true')
+    parser.add_argument('--clip', help='use clip denoised (diffusion)', default = False, action='store_true')
+
+    # DATA
     parser.add_argument('--dataset', help='choose specific dataset', default = None, type = str)
 
-    #model
+    # OPTIMIZER
+    parser.add_argument('--lr', help='reinitialize learning rate', type=float, default = None)
+    parser.add_argument('--lr_steps', help='reinitialize learning rate steps', type=int, default = None)
+
+    # MODEL
     parser.add_argument('--blocks', help='choose number of blocks in mlp', default = None, type = int)
     parser.add_argument('--units', help='choose number of units in mlp', default = None, type = int)
     parser.add_argument('--transforms', help='choose number of transforms in neural spline flow', default = None, type = int)
@@ -261,38 +257,34 @@ def parse_args():
     parser.add_argument('--nf_model_type', help='Choose normalizing_flow model type', default = None, type = str)
     parser.add_argument('--beta', help='for softplus zigzag', default = None, type = float)
 
-    # model vae
+    # VAE MODEL
+    parser.add_argument('--vae', help='Use vae', default = None, action='store_true')
     parser.add_argument('--model_vae_type', help='Choose VAE normalizing_flow model type (1 or 16)', default = None, type = str)
     parser.add_argument('--vae_t_embedding_hidden_width', help='Choose VAE normalizing_flow time embedding hidden layer size', default = None, type = int)
     parser.add_argument('--vae_t_embedding_size', help='Choose VAE normalizing_flow time embedding output size', default = None, type = int)
     parser.add_argument('--vae_x_embedding_size', help='Choose VAE normalizing_flow x embedding output size', default = None, type = int)
 
-    # now for pdmp
+    # PDMP
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)
     parser.add_argument('--time_horizon', help='choose time horizon for PDMP', default = None, type = int)
     parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
     parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
-    parser.add_argument('--square_loss', help='add square loss', default = None, action='store_true')
-    parser.add_argument('--kl_loss', help='add kl loss', default = None, action='store_true')
-    parser.add_argument('--logistic_loss', help='add logistic regression loss', default = None, action='store_true')
-    parser.add_argument('--ml_loss', help='add maximum likelihood loss', default = None, action='store_true')
-    parser.add_argument('--hyvarinen_loss', help='add hyvarinen loss', default = None, action='store_true')
-    parser.add_argument('--subsamples', help='subsampling for ZigZag', default = None, type=int)
-    parser.add_argument('--vae', help='Use vae', default = None, action='store_true')
-    parser.add_argument('--train_type', help='Which training to use', default = None, type=str)
-    parser.add_argument('--train_alternate', help='altenrate normal and normal_with_vae training', default = None, action='store_true')
+    parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
+                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml'])
+    
+    # DIFFUSION
+    parser.add_argument('--alpha', help='alpha value for diffusion', default=None, type = float)
+    parser.add_argument('--LIM', help='activate LIM training/sampling', action='store_true', default = False)
+    parser.add_argument('--non_iso', help='use non isotropic noise in the diffusion', action='store_true', default = False)
+    parser.add_argument('--non_iso_data', help='use non isotropic data', action='store_true', default = False)
+    parser.add_argument('--median', help='use median of mean. Specify (total samples, number of groups). Must have total%groups==0', nargs ='+', default = None)
+    parser.add_argument('--lploss', help='set p in lploss', default = None, type = float)
+    parser.add_argument('--variance', help='learn variance', default = False, action='store_true')
 
+    # not using this anymore
+    #parser.add_argument('--subsamples', help='subsampling for ZigZag', default = None, type=int)
 
-    # specific to evaluation
-    parser.add_argument('--reset_eval', help='reset eval dictionnary', action='store_true', default = False)
-    parser.add_argument('--ema_eval', help='evaluate only ema models', action='store_true', default = False)
-    parser.add_argument('--ddim', help='use ddim for sampling', default = False, action='store_true')
-    parser.add_argument('--clip', help='use clip denoised', default = False, action='store_true')
-    parser.add_argument('--exponent', help='exponent in reverse_steps', default = None, type = float)
-
+    # PARSE AND RETURN
     args = parser.parse_args()
-
-    assert not (args.gmm and args.stable), 'Cannot load both a gmm and a stable mm'
-    assert (args.no_ema_eval and args.ema_eval) == False, 'No evaluation to make'
-
+    assert (args.no_ema_eval and args.ema_eval) == False, 'No possible evaluation to make'
     return args

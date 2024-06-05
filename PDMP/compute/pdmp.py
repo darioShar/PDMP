@@ -8,7 +8,6 @@ import torch
 from tqdm import tqdm
 
 
-
 class PDMP:
     
     def __init__(self, 
@@ -30,7 +29,6 @@ class PDMP:
         for x in self.add_losses:
             assert x in ['ml', 'hyvarinen', 'square', 'kl', 'logistic'], 'Trying to add_loss {}; nyi. Available: {}'.format(x, self.add_losses)
 
-        # print(self.Q)
     
     def rescale_noising(self, noising_steps, time_spacing = None):
         self.reverse_steps = noising_steps
@@ -54,22 +52,18 @@ class PDMP:
                           exponent = 2.,
                           print_progession = False, 
                           get_sample_history = False):
-        #print('ZigZag generation, T = {}, N = {}'.format(T, N))
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:
             print_progession = lambda x : x
     
         timesteps = torch.linspace(1, 0, N+1)**exponent * T
-        #timesteps = timesteps.flip(dims = (0,))
-        #times = T - deltas.cumsum(dim = 0)
+
         assert (shape is not None) or (x_init is not None) or (v_init is not None) 
         if x_init is None:
             x_init = torch.randn(*shape)
         if v_init is None:
-            #v_init = torch.tensor([-1., 1.])[torch.randint(0, 2, (x_init.shape[0],))].reshape(x_init.shape[0], *[1]*len(x_init.shape[1:])).repeat(1, *(x_init.shape[1:]))
             v_init = torch.tensor([-1., 1.])[torch.randint(0, 2, (x_init.numel(), ))].reshape(*x_init.shape)
-        #chain = [pdmp.Skeleton(torch.clone(x_init), torch.clone(v_init), 0.)]
         chain = []
         x = x_init.clone().to(self.device)
         v = v_init.clone().to(self.device)
@@ -86,13 +80,11 @@ class PDMP:
                 #density_ratio = model(torch.concat((x,v), dim = -1).to(self.device),
                 #                    (torch.ones(x.shape[0])*time_mid).to(self.device))[..., :x.shape[-1]]
                 output = model(x.to(self.device), (torch.ones(x.shape[0])*time_mid).to(self.device))
-                density_ratio, selected_output_inv = self.get_densities_from_mlp_output(output, v.to(self.device))
-                #print(density_ratio.mean(dim=0))
+                # we extract the densities with a separate function
+                density_ratio, selected_output_inv = self.get_densities_from_zigzag_output(output, v.to(self.device))
                 switch_rate = density_ratio* (torch.maximum(torch.zeros(x.shape).to(self.device), -v * x) + self.refreshment_rate * torch.ones_like(x).to(self.device))
                 self.flip_given_rate(v, switch_rate, delta)
                 x -= v * delta / 2 #x - v * δ / 2
-                #print(x, v)
-                #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
@@ -102,11 +94,10 @@ class PDMP:
         # lambdas[lambdas == 0.] += 1e-9
         event_time = torch.distributions.exponential.Exponential(lambdas)
         temp = event_time.sample()
-        #temp = temp.reshape(-1, *([1]*len(x.shape[1:]))).repeat(1, *x.shape[1:])
-        tmp = model_vae.sample(x, t) if model_vae is not None else model.sample(x, t)
-        #tmp = model(torch.cat((x,t), dim = -1)).sample()
-        # print(temp[temp <= s].shape)
-        # print((tmp[temp <= s]))
+        if model_vae is not None:
+            tmp = model_vae.sample(x, t) 
+        else:
+            tmp = model.sample(x, t)
         v[temp <= s] = tmp[temp <= s]
 
     def splitting_HMC_DRD(self, model, model_vae, T, N, shape = None, x_init=None, v_init=None, exponent=2., print_progession = False, get_sample_history = False):
@@ -124,17 +115,12 @@ class PDMP:
             x_init = torch.randn(*shape)
         if v_init is None:
             v_init = torch.randn(*shape)
-        #chain = [pdmp.Skeleton(torch.clone(x_init), torch.clone(v_init), 0.)]
         chain = []
 
         x_init = x_init.to(self.device)
         v_init = v_init.to(self.device)
         
         data_shape = x_init.shape
-        # flatten
-        #x_init = x_init.reshape(x_init.shape[0], -1)
-        #v_init = v_init.reshape(v_init.shape[0], -1)
-
         x = x_init.clone()
         v = v_init.clone()
         model.eval()
@@ -145,8 +131,6 @@ class PDMP:
                 time = timesteps[i]
                 delta = (timesteps[i] - timesteps[i+1]) if i < N - 1 else timesteps[i]
                 if get_sample_history:
-                    # don't forget to unflatten data
-                    #chain.append(torch.concat((x.reshape(*data_shape), v.reshape(*data_shape)), dim = -1))
                     chain.append(torch.concat((x, v), dim = -1))
                 # compute x_n-1 from x_n
                 x_init = x.clone()
@@ -155,12 +139,8 @@ class PDMP:
                 v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
                 time_mid = time - delta/ 2 #float(n * δ - δ / 2) #float(n - δ / 2)
                 # model outputs one value per data point.
-
                 #t = time_mid * torch.ones(x.shape[0]).reshape(-1, *[1]*len(x.shape[1:])).to(self.device)
-                #t = t.reshape(-1, 1)
                 t = time_mid * torch.ones(x.shape[0]).to(self.device)
-                #t = t.reshape(-1, 1)
-                #t = t.repeat(1, 32)
                 #model = model.to(self.device)
                 #print('run model log_prob')
                 #log_p_t_model = model(torch.cat([x, t], dim = -1)).log_prob(v) #(X_V_t, t)
@@ -174,18 +154,12 @@ class PDMP:
 
                 log_nu_v = torch.distributions.Normal(0, 1).log_prob(v).sum(dim = list(range(1, len(v.shape))))
                 switch_rate = torch.exp(log_nu_v - log_p_t_model) * self.refreshment_rate
-                # print(switch_rate)
                 self.refresh_given_rate(x, v, t, switch_rate, delta, model, model_vae)
                 x_init = x.clone()
                 v_init = v.clone()
                 x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
                 v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
-                #print(x, v)
-                #chain.append(Skeleton(x.copy(), v.copy(), n * δ))
 
-        # unflatten
-        #x = x.reshape(*data_shape)
-        #v = v.reshape(*data_shape)
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
@@ -488,54 +462,18 @@ class PDMP:
                                 get_sample_history = get_sample_history)
         return samples_or_chain
     
-        if self.sampler == 'ZigZag':
-            chain = torch.stack(self.splitting_zzs_DBD(model, 
-                                                   self.T, 
-                                                   self.reverse_steps, 
-                                                   nsamples = nsamples,
-                                                   print_progession=print_progession,
-                                                   get_sample_history = get_sample_history))
-        elif self.sampler == 'HMC':
-            chain = torch.stack(self.splitting_HMC_DRD(model, 
-                                                   self.T, 
-                                                   self.reverse_steps, 
-                                                   nsamples = nsamples,
-                                                   print_progession=print_progession))
-        elif self.sampler == 'BPS':
-            chain = torch.stack(self.splitting_BPS_RDBDR(model, 
-                                                   self.T, 
-                                                   self.reverse_steps, 
-                                                   nsamples = nsamples,
-                                                   print_progession=print_progession))
-        return chain
-    
-    
-    def get_densities_from_mlp_output(self, output, v, beta=None):
-        if False:
-            D = output.shape[-1]//2
-            index = ((v +1.) / 2.0).int()
-            indices_for_gathering = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * index
-            indices_for_gathering_inv = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * (1 - index)
-            #print(indices_for_gathering.shape)
-            final_indices = indices_for_gathering.expand(-1, -1, D)
-            final_indices_inv = indices_for_gathering_inv.expand(-1, -1, D)
-            #print(final_indices.shape)
-            selected_output = torch.gather(output, 2, final_indices)
-            selected_output_inv = torch.gather(output, 2, final_indices_inv)
-        else:
-            #output = torch.log(1 + torch.exp(output))
-            output = torch.nn.functional.softplus(output, beta=0.2, threshold=20)
-            index = ((v +1.) / 2.0).type(torch.int64)
-            B, C = v.shape[:2]
-            assert output.shape == (B, C * 2, *output.shape[2:])
-            # split output
-            #selected_output, selected_output_inv = torch.split(output, C, dim=1)
-            selected_output = torch.gather(output, 1, index)
-            selected_output_inv = torch.gather(output, 1, 1 - index)
-
+    # ZigZag's output is of format (B, 2*C, ...) where B is the batch size and C the number of channels of the data ($C=1$ for 2D data). 
+    # The first C channels correspond to velocity=-1, the second to velocity=1. 
+    # so we use torch.gather using the velocity tensor to retrieve the densities we need.
+    def get_densities_from_zigzag_output(self, output, v):
+        index = ((v +1.) / 2.0).type(torch.int64)
+        B, C = v.shape[:2]
+        assert output.shape == (B, C * 2, *output.shape[2:])
+        selected_output = torch.gather(output, 1, index)
+        selected_output_inv = torch.gather(output, 1, 1 - index)
         return selected_output, selected_output_inv
 
-    def training_losses_zigzag(self, model, X_t, V_t, t, subsamples = 5, beta=None):
+    def training_losses_zigzag(self, model, X_t, V_t, t):
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
@@ -554,12 +492,13 @@ class PDMP:
         # compute the loss
         def g(x):
             return (1 / (1+x))
-        
-        #assert X_t.shape[-1] == 2, 'only dimension 2 is implemened'
-        
+            
         loss = 0
         
+
         '''
+        #assert X_t.shape[-1] == 2, 'only dimension 2 is implemened'
+
         # subusampling ceil(0.01 * d) components
         D = torch.prod(torch.tensor(V_t.shape[1:]))
         #subsamples = 5 #int(np.ceil(0.01 * D))
@@ -593,7 +532,7 @@ class PDMP:
         #output_inv_0 = model(X_V_inv_t_0, t)
         #output_inv_1 = model(X_V_inv_t_1, t)
 
-        selected_output, selected_output_inv = self.get_densities_from_mlp_output(output, V_t, beta=beta)
+        selected_output, selected_output_inv = self.get_densities_from_zigzag_output(output, V_t)
         
         loss = g(selected_output)**2 + g(selected_output_inv)**2
         loss -= 2*g(selected_output)
@@ -604,13 +543,13 @@ class PDMP:
         return loss
     
     def training_loss_hmc(self, model, X_t, V_t, t, train_type, model_vae=None):
-        # train_type: 'VAE', 'MLE', 'RATIO'
-        # 'MLE': only use model, which gives the log prob.
-        # 'VAE': only train the vae
-        # 'RATIO': if model_vae is given, trains the ratio with true v_t replaced by vae sample
-        # 'RATIO': if model_vae is not given, trains the ratio with true v_t
+        ''' train_type: 'VAE', 'MLE', 'RATIO'
+        'MLE': only use model, which gives the log prob.
+        'VAE': only train the vae
+        'RATIO': if model_vae is given, trains the ratio with true v_t replaced by vae sample
+        'RATIO': if model_vae is not given, trains the ratio with true v_t
+        '''
 
-        
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
@@ -813,19 +752,8 @@ class PDMP:
         return loss
     
 
-    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, subsamples = None, train_type=['NORMAL'], model_vae=None, beta = None):
-        assert subsamples is not None
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None):
 
-                # generate random speed
-        #if V_batch is None:
-        #    if self.sampler == 'ZigZag':
-        #        V_batch = torch.tensor([-1., 1.])[torch.randint(0, 2, (2*X_batch.shape[0],))]
-        #        V_batch = V_batch.reshape(X_batch.shape[0], 1, 2)
-        #    elif self.sampler == 'HMC':
-        #        V_batch = torch.randn_like(X_batch)
-        #    elif self.sampler == 'BPS':
-        #        V_batch = torch.randn_like(X_batch)
-#
         # generate random time horizons
         if time_horizons is None:
             time_horizons = self.T * (torch.rand(X_batch.shape[0])**2)
@@ -842,30 +770,16 @@ class PDMP:
         # put everyhting on the device
         X_batch = X_batch.to(self.device)
         t = t.to(self.device)
-        #print('t', t[0])
-
         # apply the forward process. Everything runs on the cpu.
-        #self.forward_old(X_batch, t, speed = V_batch)
         X_batch, V_batch = self.forward(X_batch, t, speed = V_batch)
-        
-        #print('x', x[0])
-        #print('X_t', X_t[0])
         # put back on the device
         self.device = device
 
-
-        # check that the data has been modified
-        #idx = (x == Xbatch)
-        #print(idx, x[idx], Xbatch[idx])
-        #idx = (v == Vbatch)
-        #print(idx, v[idx], Vbatch[idx])
-        #assert ((x == X_t).logical_not()).any() and ((v == Vbatch).logical_not()).any()
-        #assert not ((x == X_t)).any()
         # check that the time horizon has been reached for all data
         assert not (t != 0.).any()
 
         if self.sampler == 'ZigZag':
-            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons, subsamples=subsamples, beta = beta)
+            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons)
         elif self.sampler == 'HMC':
             for type in train_type:
                 assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE'], 'Unkown train_type {}'.format(type)
@@ -942,6 +856,29 @@ class PDMP:
         mask = torch.logical_and(time_horizons > torch.minimum(Δt_reflections,Δt_refresh), Δt_refresh<Δt_reflections)
         v[mask] = torch.randn_like(v[mask]).to(self.device)
         time_horizons -= torch.minimum(time_horizons,torch.minimum(Δt_reflections,Δt_refresh))
+
+
+
+
+
+
+
+'''
+    def get_densities_from_zigzag_output(self, output, v):
+        D = output.shape[-1]//2
+        index = ((v +1.) / 2.0).int()
+        indices_for_gathering = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * index
+        indices_for_gathering_inv = torch.arange(D).unsqueeze(0).unsqueeze(0).to(self.device) + D * (1 - index)
+        #print(indices_for_gathering.shape)
+        final_indices = indices_for_gathering.expand(-1, -1, D)
+        final_indices_inv = indices_for_gathering_inv.expand(-1, -1, D)
+        #print(final_indices.shape)
+        selected_output = torch.gather(output, 2, final_indices)
+        selected_output_inv = torch.gather(output, 2, final_indices_inv)
+
+
+'''
+
 
 
 

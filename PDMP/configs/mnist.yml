@@ -54,21 +54,6 @@ eval:
     #new_time_spacing
 
 model:
-  # this is for 2d ZigZag, and 2d diffusion
-  mlp:
-    a_emb_size: 32
-    a_pos_emb: false
-    act: silu
-    compute_gamma: false
-    dropout_rate: 0.0
-    group_norm: true
-    nblocks: 2
-    no_a: true
-    nunits: 64
-    skip_connection: true
-    time_emb_size: 8
-    time_emb_type: learnable
-    use_a_t: false
   unet:
     model_type: "ddpm"
     attn_resolutions: [2, 4]
@@ -78,6 +63,8 @@ model:
     model_channels: 32
     num_heads: 4
     num_res_blocks: 2
+    beta: 0.2
+    threshold: 20
   # this is for the other samplers; normalizing flows
   normalizing_flow:
 #    transforms: 24
@@ -108,18 +95,16 @@ training:
     ema_rates:
     - 0.99
     grad_clip: 1.0 #1.0
-    subsamples: 5 # for ZigZag
-    train_type: VAE # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
+    train_type: NORMAL # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false
-    beta: 1 # for softplus zigzag
   diffusion:
     ema_rates: 
     - 0.99
     grad_clip: null #1.0
     loss_monte_carlo: mean # loss to apply on batch of M number of a's. can be mean or median
     lploss: 2.
-    monte_carlo_steps: 1 # for each t, x_0, z_t, number of different a_t_1, a_t' to generate
-    monte_carlo_groups: 1 # number groups: will take median of means of monte_carlo_groups of a's
+    monte_carlo_steps: 1 
+    monte_carlo_groups: 1 
 
 
 optim:
