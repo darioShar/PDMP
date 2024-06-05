@@ -1,9 +1,9 @@
 .ipynb_checkpoints
 .neptune/**
-**/__pycache__/**
+**__pycache__**
 **/__pycache__
 __pycache__
-**__pycache__**
+**.__pycache__**
 **.pyc
 
 data/**
@@ -11,7 +11,7 @@ eval_files/**
 figures/**
 log/**
 models/**
-notebooks/**
 old/**
 scratch/**
 best_mnist_img/**
+img/**
