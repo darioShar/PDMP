@@ -1,27 +1,5 @@
 # PDMP
 
-## What can be done
-
-* train and evaluate PDMP/diffusion models for data generation
-* datasets: simple 2d data (gmm_grid, alpha_stable_grid etc.), image datasets (mnist, cifar10, celeba)
-
-## Structure of the project
-
-We plan to draw a figure representing the whole program flow. It is a bit complicated for the moment so we will just point at the most important parts of the code
-
-### Models
-* The MLP model used by ZigZag and diffusion for 2D data is located in `./PDMP/models/Model.py` and corresponds to the `MLPModel` object
-* The U-Net model used by ZigZag and diffusion for image data is located in `./PDMP/models/unet.py` and corresponds to the `UNetModel` object
-* The Normalizing Flow models used by HMC and BPS is located in `./PDMP/models/NormalizingFlow.py` and corresponds to the `NormalizingFlowModel` object. They can be used in conjunction with a VAE, but this has not worked out very well (for the moment the vae implementation clutters the code a bit, this will be dealt with later on.)
-
-### PDMP computations
-* Look at the `./PDMP/compute/pdmp.py` file, where we define the forward, the training loss, and the backward sampling.
-* Look at `get_densities_from_zigzag_output` to see how we retrieve the densities from ZigZag output. ZigZag's output is of format (B, 2*C, ...) where B is the batch size and C the number of channels of the data ($C=1$ for 2D data). The first C channels correspond to velocity=-1, the second to velocity=1. 
-
-
-### Todo...
-generation, evaluation, training manager and ema models, experiment design, overall codeflow
-
 ## How to run
 
 Open and modify ***./PDMP/config/2d_data.yml*** to configurate the run (on 2d datasets). You will find all relevant adjustable parameters. To launch an experiment, run the `./run_PDMP.py` script:
@@ -84,3 +62,19 @@ print('Animation saved in {}'.format(path))
 See `review_experiments` notebook.
 
 
+## Structure of the project
+
+We plan to draw a figure representing the whole program flow. It is a bit complicated for the moment so we will just point at the most important parts of the code
+
+### Models
+* The MLP model used by ZigZag and diffusion for 2D data is located in `./PDMP/models/Model.py` and corresponds to the `MLPModel` object
+* The U-Net model used by ZigZag and diffusion for image data is located in `./PDMP/models/unet.py` and corresponds to the `UNetModel` object
+* The Normalizing Flow models used by HMC and BPS is located in `./PDMP/models/NormalizingFlow.py` and corresponds to the `NormalizingFlowModel` object. They can be used in conjunction with a VAE, but this has not worked out very well (for the moment the vae implementation clutters the code a bit, this will be dealt with later on.)
+
+### PDMP computations
+* Look at the `./PDMP/compute/pdmp.py` file, where we define the forward, the training loss, and the backward sampling.
+* Look at `get_densities_from_zigzag_output` to see how we retrieve the densities from ZigZag output. ZigZag's output is of format (B, 2*C, ...) where B is the batch size and C the number of channels of the data ($C=1$ for 2D data). The first C channels correspond to velocity=-1, the second to velocity=1. 
+
+
+### Todo...
+generation, evaluation, training manager and ema models, experiment design, overall codeflow
