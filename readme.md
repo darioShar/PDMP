@@ -33,7 +33,8 @@ This will look into the `./models/2d_pdmp` folder to find models trained with th
 Thus pass `eval` == `epochs` in order to evaluate a single model, checkpointed at epoch `epochs`. 
 
 ## Display plots
-The `display_pdmp.py` script can be used to display a plot and an animation of the generated data. Example:
+The `display_pdmp.py` script can be used to display a plot and an animation of some generated data. It will load a model in the same fashion as the `eval_pdmp.py` script, but will always load the latest model saved with the specified parameters.
+Example:
 
 > python ./display_pdmp.py --config 2d_data --name 2d_pdmp --sampler BPS --epochs 20 --eval 20 --loss hyvarinen ml logistic --noising_process pdmp  --reverse_steps 50
 
