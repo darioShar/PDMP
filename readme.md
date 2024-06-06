@@ -17,7 +17,7 @@ One can pass arguments to the command line, to overwrite the configuration file'
 
 > python ./run_pdmp.py --config 2d_data --name tmp --noising_process pdmp --sampler BPS --reverse_steps 50 --refresh_rate 1. --epochs 100 --eval 20 --scheme splitting --loss square --logistic --kl
 
-loads `2d_data` config file and its parameters, saves the runs in `./models/tmp`, and overwrites the following: uses pdmp with BPS sampler, 50 reverse steps, a refresh rate of 1., trains for 100 epochs, checkpoints and evaluates every 25 epochs, uses the splitting scheme as the backward scheme, and uses the square loss, logistic loss and KL loss for the training (just adds these losses). 
+loads `2d_data` config file and its parameters, saves the run in `./models/tmp`, and overwrites parameters so that we: use pdmp with BPS sampler, 50 reverse steps, a refresh rate of 1., train for 100 epochs, checkpoint and evaluate every 25 epochs, use the splitting scheme as the backward scheme, and use the square loss, logistic loss and KL loss for training (we just add these losses). 
 
 To rather use diffusion, one can run
 > python ./run_PDMP.py --config 2d_data --name 2d_pdmp --epochs 100 --eval 25 --check 25 --reverse_steps 100 --noising_process diffusion
