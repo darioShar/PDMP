@@ -55,13 +55,13 @@ class GenerationManager:
         clamp = 1. if self.is_image else 6.
         if get_sample_history:
             hist = x
-            samples = hist[-1, ..., :data.shape[-1]]
+            self.samples = hist[-1, ..., :data.shape[-1]]
             self.history = hist[..., :data.shape[-1]].clamp(-clamp, clamp).cpu()
         else:
-            samples = x[..., :data.shape[-1]] # select positions in case of pdmp
-        samples = samples.clamp(-clamp, clamp).cpu()
+            self.samples = x[..., :data.shape[-1]] # select positions in case of pdmp
+        self.samples = self.samples.clamp(-clamp, clamp).cpu()
         if self.is_image:
-            self.samples = inverse_affine_transform(samples)
+            self.samples = inverse_affine_transform(self.samples)
             if len(self.history) != 0:
                 self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform
 
