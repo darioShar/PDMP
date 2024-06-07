@@ -290,7 +290,8 @@ class Manager:
                                   color=color, 
                                   xlim=xlim, 
                                   ylim=ylim,
-                                  alpha=alpha)
+                                  alpha=alpha,
+                                  pdmp = self.noising_process)
         plt.show(block=False)
         return anim
     

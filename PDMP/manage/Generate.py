@@ -154,8 +154,21 @@ class GenerationManager:
                       color = 'blue',
                       xlim = (-1.1, 1.1), 
                       ylim = (-1.1, 1.1),
-                      alpha = 0.5
+                      alpha = 0.5,
+                      pdmp = None,
                       ):
+        
+        assert pdmp is not None, 'Must give pdmp object to determine the time spacing'
+        
+        # determine the timesteps we are working with. Add the last value T to the array
+        # must reverse the list to have it in increasing order
+        # len(self.history) == T+1 (goes from x_T to ... x_0)
+        timesteps = np.array([x for x in pdmp.get_timesteps(len(self.history)-1, **self.kwargs)])
+        timesteps = timesteps[::-1].copy()
+        timesteps = torch.tensor(timesteps)
+
+        num_frames = 60*3
+
         if plot_original_data:
             original_data = self.load_original_data(limit_nb_datapoints)
             original_data = original_data.squeeze(1)
@@ -183,9 +196,26 @@ class GenerationManager:
             im.set_data(np.random.random(image_shape))
             return im, 
 
+        def get_interpolation_values(i):
+            t = pdmp.T * (i / (num_frames - 1))
+            k = torch.searchsorted(timesteps, t) - 1
+            if k < 0:
+                k = 0
+            if k >= len(timesteps)-1:
+                k = len(timesteps) - 2
+            l = (t - timesteps[k]) / (timesteps[k+1] - timesteps[k])
+            return k, l
+            Xk1 = self.history[k+1].cpu().squeeze(1)[:limit_nb_datapoints]
+            Xk = self.history[k].cpu().squeeze(1)[:limit_nb_datapoints]
+            Xvis = Xk1 * l + Xk* (1 - l)
+            return Xvis
+        
         def draw_frame_2d(i):
             #ax.clear()
-            Xvis = self.history[i].cpu().squeeze(1)[:limit_nb_datapoints]
+            k, l = get_interpolation_values(i)
+            Xk1 = self.history[k+1].cpu().squeeze(1)[:limit_nb_datapoints]
+            Xk = self.history[k].cpu().squeeze(1)[:limit_nb_datapoints]
+            Xvis = Xk1 * l + Xk* (1 - l)
             scatter.set_offsets(Xvis)
             if plot_original_data:
                 scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
@@ -193,16 +223,19 @@ class GenerationManager:
             return scatter, 
     
         def draw_frame_image(i):
-            Xvis = self.history[i][0].cpu() # just take first image of the batch.
+            k, l = get_interpolation_values(i)
+            Xk1 = self.history[k+1][0].cpu() # just take first element of the batch. batch size should always be one anyway
+            Xk = self.history[k][0].cpu() # just take first element of the batch. batch size should always be one anyway
+            Xvis = Xk1 * l + Xk* (1 - l)
             img = self._get_image_from([Xvis], black_and_white=True)
             im.set_data(img)
             return im,
     
-        # 2500 ms per loop
+        # 3000 ms per loop
         if self.is_image:
-            anim = animation.FuncAnimation(fig, draw_frame_image, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame_image)
+            anim = animation.FuncAnimation(fig, draw_frame_image, frames=num_frames, interval= 3000 / num_frames, blit=True, init_func=init_frame_image)
         else:
-            anim = animation.FuncAnimation(fig, draw_frame_2d, frames=len(self.history), interval= 3000 / len(self.history), blit=True, init_func=init_frame_2d)
+            anim = animation.FuncAnimation(fig, draw_frame_2d, frames=num_frames, interval= 3000 / num_frames, blit=True, init_func=init_frame_2d)
         return anim
 
     def save_animation(self,

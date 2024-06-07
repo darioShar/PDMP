@@ -30,6 +30,9 @@ class PDMP:
             assert x in ['ml', 'hyvarinen', 'square', 'kl', 'logistic'], 'Trying to add_loss {}; nyi. Available: {}'.format(x, self.add_losses)
 
     
+    def get_timesteps(self, N, exponent = 2, **kwargs):
+        return torch.linspace(1, 0, N+1)**exponent * self.T
+
     def rescale_noising(self, noising_steps, time_spacing = None):
         self.reverse_steps = noising_steps
         self.time_spacing = time_spacing
@@ -57,7 +60,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**exponent * T
+        timesteps = self.get_timesteps(N, exponent=exponent)
 
         assert (shape is not None) or (x_init is not None) or (v_init is not None) 
         if x_init is None:
@@ -106,7 +109,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**exponent * T
+        timesteps = self.get_timesteps(N, exponent=exponent)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -176,7 +179,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = torch.linspace(1, 0, N+1)**exponent * T
+        timesteps = self.get_timesteps(N, exponent=exponent)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -329,7 +332,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
         print('using Euler')
-        timesteps = torch.linspace(1, 0, N+1)**exponent * T
+        timesteps = self.get_timesteps(N, exponent=exponent)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
