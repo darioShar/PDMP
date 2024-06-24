@@ -87,10 +87,15 @@ conda activate diffusion
 
 
 # mnist last hope
-beta=0.1
-python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_last_hope_$beta --epochs 200 --check 5 --time_horizon 5 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --log --beta $beta --lr 0.001
+beta=0.2
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_losses_$beta --epochs 200 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss hyvarinen --log --beta $beta --lr 0.001
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_losses_$beta --epochs 200 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss kl --log --beta $beta --lr 0.001
+#python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_losses_$beta --epochs 200 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss kl hyvarinen --log --beta $beta --lr 0.001
+python ./run_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_softmax_$beta --epochs 200 --check 10 --time_horizon 10 --reverse_steps 100 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss hyvarinen --log --beta $beta --lr 0.001 --use_softmax
+
+
 
 #python ./eval_pdmp.py --job_id $SLURM_JOB_ID --config mnist --name mnist_zigzag_last_hope --epochs 65 --eval 65 --time_horizon 5 --reverse_steps 1000 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --generate 128 --log
 
-python ./eval_pdmp.py --job_id 0 --config mnist --name mnist_zigzag_last_hope_0.2 --epochs 125 --eval 125 --time_horizon 5 --reverse_steps 1000 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --generate 128 --beta 0.2
+#python ./eval_pdmp.py --job_id 0 --config mnist --name mnist_zigzag_last_hope_0.2 --epochs 125 --eval 125 --time_horizon 5 --reverse_steps 1000 --exponent 2 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --hyvarinen_loss --generate 128 --beta 0.2
 

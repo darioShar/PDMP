@@ -144,6 +144,10 @@ def update_parameters_before_loading(p, args):
 
     if args.beta is not None:
         p['training']['pdmp']['beta'] = args.beta
+
+    if args.use_softmax:
+        p['additional']['use_softmax'] = args.use_softmax
+    
     # model vae
     if args.model_vae_type is not None:
         p['model']['normalizing_flow']['model_vae_type'] = args.model_vae_type
@@ -256,6 +260,8 @@ def parse_args():
     parser.add_argument('--x_embedding_size', help='choose x embedding size', default = None, type = int)
     parser.add_argument('--nf_model_type', help='Choose normalizing_flow model type', default = None, type = str)
     parser.add_argument('--beta', help='for softplus zigzag', default = None, type = float)
+    
+    parser.add_argument('--use_softmax', help='use softmax in ZigZag', default = False, action='store_true')
 
     # VAE MODEL
     parser.add_argument('--vae', help='Use vae', default = None, action='store_true')

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#SBATCH --job-name=PDMP    # create a short name for your job
+#SBATCH --nodes=1                # node count
+#SBATCH --ntasks=1               # total number of tasks across all nodes
+#SBATCH --cpus-per-task=12       # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --partition=cpu_homogen          # Name of the partition
+## ## #SBATCH --gres=gpu:1     # GPU nodes are only available in gpu partition
+#SBATCH --time=48:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --mem=20G                # Total memory allocated
+# ### ### SBATCH --hint=multithread       # we get physical cores not logical
+#SBATCH --output=./log/%x_%j.out   # output file name
+#SBATCH --array=0-4              # job array index
+
+exp_number=$SLURM_ARRAY_TASK_ID
+
+echo "### Running $SLURM_JOB_NAME with array task $SLURM_ARRAY_TASK_ID ###"
+
+set -x
+cd ${SLURM_SUBMIT_DIR}
+
+module purge
+module load cuda/11.4.0
+
+source /home/$USER/.bashrc
+conda activate diffusion
+
+epochs=500
+
+# ZigZag
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_losses_zigzag_softmax_true_$exp_number --epochs $epochs --eval 250 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss kl --dataset rose --use_softmax
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_losses_zigzag_softmax_true_$exp_number --epochs $epochs --eval 250 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss hyvarinen --dataset rose --use_softmax
+python ./run_pdmp.py --config 2d_data --name cleps/experiment_losses_zigzag_softmax_true_$exp_number --epochs $epochs --eval 250 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss hyvarinen kl --dataset rose --use_softmax

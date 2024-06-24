@@ -474,10 +474,29 @@ class PDMP:
     def get_densities_from_zigzag_output(self, output, v):
         index = ((v +1.) / 2.0).type(torch.int64)
         B, C = v.shape[:2]
+        assert C == 1, 'only one channel is supported right now'
         assert output.shape == (B, C * 2, *output.shape[2:])
+        # is use_softmax is true, we interpret the output as p_t and p_t(..., R_t) rather than the ratios
+        # so we apply softmax and then compute the ratios
+        if self.use_softmax == True:
+            # Reshape tensor to [B, C, 2, H, W]
+            data_reshaped = output.view(B, C, 2, *output.shape[2:])
+
+            # Apply softmax over the third dimension (channels)
+            softmax_output = torch.nn.functional.softmax(data_reshaped, dim=2)
+
+            # Initialize tensor to hold the ratios
+            ratios = torch.empty_like(softmax_output)
+
+            # Compute the ratios for each channel pair
+            ratios[:, :, 0, ...] = softmax_output[:, :, 0, ...] / softmax_output[:, :, 1, ...]  # First channel over the second
+            ratios[:, :, 1, ...] = softmax_output[:, :, 1, ...] / softmax_output[:, :, 0, ...]  # 
+            # Optionally reshape back to the original shape if needed
+            output = ratios.view(B, 2*C, *output.shape[2:])
+
         selected_output = torch.gather(output, 1, index)
         selected_output_inv = torch.gather(output, 1, 1 - index)
-        
+
         return selected_output, selected_output_inv
 
     def training_losses_zigzag(self, model, X_t, V_t, t):

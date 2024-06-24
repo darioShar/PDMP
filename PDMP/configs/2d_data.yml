@@ -152,3 +152,6 @@ run:
   eval_freq: null
   checkpoint_freq: null
   progress: true # print progress bar
+
+additional:
+  use_softmax: false
