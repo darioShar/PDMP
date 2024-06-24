@@ -17,7 +17,9 @@ class PDMP:
                  sampler = 'ZigZag', 
                  refresh_rate = 1.,
                  time_spacing = None,
-                 add_losses = []):
+                 add_losses = [],
+                 use_softmax = False, # for ZigZag output
+                 ):
         self.T = time_horizon
         self.reverse_steps = reverse_steps
         self.device = 'cpu' if device is None else device
@@ -25,6 +27,7 @@ class PDMP:
         self.refreshment_rate = refresh_rate
         self.time_spacing = time_spacing
         self.add_losses = add_losses
+        self.use_softmax = use_softmax
 
         for x in self.add_losses:
             assert x in ['ml', 'hyvarinen', 'square', 'kl', 'logistic'], 'Trying to add_loss {}; nyi. Available: {}'.format(x, self.add_losses)
@@ -474,6 +477,7 @@ class PDMP:
         assert output.shape == (B, C * 2, *output.shape[2:])
         selected_output = torch.gather(output, 1, index)
         selected_output_inv = torch.gather(output, 1, 1 - index)
+        
         return selected_output, selected_output_inv
 
     def training_losses_zigzag(self, model, X_t, V_t, t):
@@ -490,8 +494,7 @@ class PDMP:
         # run the model
         #output = model(X_V_t, t)
         output = model(X_t, t)
-        # only reflections in zigzag, we have to use  hyvarinen
-        assert 'hyvarinen' in self.add_losses, 'ZigZag must use (and only uses) hvarinen loss'
+        
         # compute the loss
         def g(x):
             return (1 / (1+x))
@@ -537,8 +540,14 @@ class PDMP:
 
         selected_output, selected_output_inv = self.get_densities_from_zigzag_output(output, V_t)
         
-        loss = g(selected_output)**2 + g(selected_output_inv)**2
-        loss -= 2*g(selected_output)
+        assert ('hyvarinen' in self.add_losses ) or ('kl' in self.add_losses), 'must use either hyvarinen or kl loss in ZigZag'
+        # Hyvarinen
+        if 'hyvarinen' in self.add_losses:
+            loss += g(selected_output)**2 + g(selected_output_inv)**2
+            loss -= 2*g(selected_output)
+        if 'kl' in self.add_losses:
+            # KL (17)
+            loss += selected_output - torch.log(selected_output_inv)
 
         #loss = g(output[:, :, 0])**2 + g(output_inv_0[:, :, 0])**2
         #loss += g(output[:, :, 1])**2 + g(output_inv_1[:, :, 1])**2
@@ -759,7 +768,8 @@ class PDMP:
 
         # generate random time horizons
         if time_horizons is None:
-            time_horizons = self.T * (torch.rand(X_batch.shape[0])**2)
+            time_horizons = self.get_timesteps(N=X_batch.shape[0]-1, exponent=2)
+            #time_horizons = self.T * (torch.rand(X_batch.shape[0])**2)
 
         # must be of the same shape as Xbatch for the pdmp forward process, since it will be applied component wise
         t = time_horizons.clone().detach().reshape(-1, *[1]*len(X_batch.shape[1:])).repeat(1, *X_batch.shape[1:])
