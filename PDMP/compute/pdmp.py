@@ -564,6 +564,8 @@ class PDMP:
         if 'hyvarinen' in self.add_losses:
             loss += g(selected_output)**2 + g(selected_output_inv)**2
             loss -= 2*g(selected_output)
+        elif 'hyvarinen_simple' in self.add_losses:
+            loss += g(selected_output_inv)**2 
         if 'kl' in self.add_losses:
             # KL (17)
             loss += selected_output - torch.log(selected_output_inv)

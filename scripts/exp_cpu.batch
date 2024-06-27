@@ -61,3 +61,6 @@ done
 
 
 #python ./run_pdmp.py --config mnist --name tmp --epochs 10 --eval 5 --check 5 --reverse_steps 1000 --noising_process diffusion
+
+
+python ./run_pdmp.py --config 2d_data --name tmp --epochs 2 --eval 1 --check 2 --reverse_steps 100 --noising_process pdmp --sampler ZigZag --refresh_rate 1.0 --loss hyvarinen_simple

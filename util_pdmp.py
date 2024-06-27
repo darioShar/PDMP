@@ -1,6 +1,7 @@
 import argparse
 
 from PDMP.manage.exp_utils import init_ls_by_parameter, hash_parameters, hash_parameters_eval
+from PDMP.datasets import is_image_dataset
 
 CONFIG_PATH = 'PDMP/configs'
 
@@ -143,7 +144,11 @@ def update_parameters_before_loading(p, args):
         p['model']['normalizing_flow']['model_type'] = args.nf_model_type
 
     if args.beta is not None:
-        p['training']['pdmp']['beta'] = args.beta
+        if not is_image_dataset(p['data']['dataset']):
+            p['model']['mlp']['beta'] = args.beta
+        else:
+            p['model']['unet']['beta'] = args.beta
+
 
     if args.use_softmax:
         p['additional']['use_softmax'] = args.use_softmax
@@ -276,7 +281,7 @@ def parse_args():
     parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
     parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
     parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
-                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml'])
+                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple'])
     
     # DIFFUSION
     parser.add_argument('--alpha', help='alpha value for diffusion', default=None, type = float)

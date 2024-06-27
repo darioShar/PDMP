@@ -36,7 +36,7 @@ diffusion:
 eval:
   data_to_generate: 128
   batch_size: 128
-  real_data: 128 # in case of images, number of real images to store and to compare to
+  real_data: 1024 # in case of images, number of real images to store and to compare to
 
   pdmp:
     backward_scheme: splitting # euler
