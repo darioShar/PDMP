@@ -30,7 +30,8 @@ class PDMP:
         self.use_softmax = use_softmax
 
         for x in self.add_losses:
-            assert x in ['ml', 'hyvarinen', 'square', 'kl', 'logistic'], 'Trying to add_loss {}; nyi. Available: {}'.format(x, self.add_losses)
+            possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
+            assert x in possible_losses, 'specified loss {} unaivailble. Possible losses to choose from : {}'.format(x, possible_losses)
 
     
     def get_timesteps(self, N, exponent = 2, **kwargs):
@@ -559,8 +560,15 @@ class PDMP:
 
         selected_output, selected_output_inv = self.get_densities_from_zigzag_output(output, V_t)
         
-        assert ('hyvarinen' in self.add_losses ) or ('kl' in self.add_losses), 'must use either hyvarinen or kl loss in ZigZag'
-        # Hyvarinen
+        #assert ('hyvarinen' in self.add_losses ) or ('kl' in self.add_losses), 'must use either hyvarinen or kl loss in ZigZag'
+        def aux(a):
+            if len(a) == 0:
+                return False
+            return (a[0] in self.add_losses) or aux(a[1:])
+        zigzag_losses = ['hyvarinen', 'hyvarinen_simple', 'kl', 'kl_simple']
+        assert len(list(set(self.add_losses) & set(zigzag_losses))) != 0, 'Did not specify a loss used in ZigZag. Losses specified: {}. Possible losses for ZigZag: {}'.format(self.add_losses, zigzag_losses)
+        
+        # adding losses
         if 'hyvarinen' in self.add_losses:
             loss += g(selected_output)**2 + g(selected_output_inv)**2
             loss -= 2*g(selected_output)
@@ -569,6 +577,8 @@ class PDMP:
         if 'kl' in self.add_losses:
             # KL (17)
             loss += selected_output - torch.log(selected_output_inv)
+        elif 'kl_simple' in self.add_losses:
+            loss += - torch.log(selected_output_inv)
 
         #loss = g(output[:, :, 0])**2 + g(output_inv_0[:, :, 0])**2
         #loss += g(output[:, :, 1])**2 + g(output_inv_1[:, :, 1])**2

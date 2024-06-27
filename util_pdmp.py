@@ -281,7 +281,7 @@ def parse_args():
     parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
     parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
     parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
-                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple'])
+                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple'])
     
     # DIFFUSION
     parser.add_argument('--alpha', help='alpha value for diffusion', default=None, type = float)
