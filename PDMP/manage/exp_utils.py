@@ -242,7 +242,8 @@ def prepare_data_directories(dataset_name, dataset_files, remove_existing_eval_f
 ''''''''''' PREPARE FROM PARAMETER DICT '''''''''''
 
 # for the moment, only unconditional models
-def _unet_model(p, p_model_unet):
+def _unet_model(p, p_model_unet, bin_input_zigzag=False):
+    assert bin_input_zigzag == False, 'bin_input_zigzag nyi for unet'
     image_size = p['data']['image_size']
     # the usual channel multiplier. Can choose otherwise in config files.
     '''if image_size == 256:
@@ -305,7 +306,8 @@ def init_model_by_parameter(p):
             model = Model.MLPModel(nfeatures = p['data']['dim'],
                                     device=p['device'], 
                                     p_model_mlp=model_param,
-                                    noising_process=method)
+                                    noising_process=method,
+                                    bin_input_zigzag=p['additional']['bin_input_zigzag'])
         elif method == 'nf':
             type = model_param['model_type']
             nfeatures = p['data']['dim']
@@ -326,19 +328,31 @@ def init_model_by_parameter(p):
             #print('retro_compatibility: default values for 2d data when loading model')
             #p['model']['normalizing_flow']['x_emb_type'] = 'concatenate'
             #p['model']['normalizing_flow']['x_emb_size'] = 2
-            model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
-                                                         device=p['device'], 
-                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
+            if p['pdmp']['learn_jump_time']:
+                model = NormalizingFLow.NormalizingFlowModelJumpTime(nfeatures=p['data']['dim'], 
+                                                            device=p['device'], 
+                                                            p_model_normalizing_flow=p['model']['normalizing_flow'])
+            else:
+                model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+                                                            device=p['device'], 
+                                                            p_model_normalizing_flow=p['model']['normalizing_flow'])
     else:
         if method in ['diffusion', 'ZigZag']:
-            model = _unet_model(p, p_model_unet = model_param)
+            model = _unet_model(p, p_model_unet = model_param, bin_input_zigzag=p['additional']['bin_input_zigzag'])
         else:
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             data_dim = p['data']['image_size']**2 * p['data']['channels']
-            model = NormalizingFLow.NormalizingFlowModel(nfeatures=data_dim, 
-                                                         device=p['device'], 
-                                                         p_model_normalizing_flow=p['model']['normalizing_flow'],
-                                                         unet=_unet_model(p, p_model_unet=p['model']['unet']))
+            if p['pdmp']['learn_jump_time']:
+                model = NormalizingFLow.NormalizingFlowModelJumpTime(nfeatures=p['data']['dim'], 
+                                                            device=p['device'], 
+                                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
+                                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
+            else:
+                model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+                                                            device=p['device'], 
+                                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
+                                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
+
     return model.to(p['device'])
 
 def init_model_vae_by_parameter(p):
@@ -385,6 +399,8 @@ def init_noising_process_by_parameter(p):
                         refresh_rate = p['pdmp']['refresh_rate'],
                         add_losses= p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [],
                         use_softmax= p['additional']['use_softmax'],
+                        learn_jump_time=p['pdmp']['learn_jump_time'],
+                        bin_input_zigzag = p['additional']['bin_input_zigzag']
                         )
     elif p['noising_process'] == 'diffusion':
         noising_process = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],

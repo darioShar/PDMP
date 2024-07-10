@@ -92,12 +92,14 @@ class DiffusionBlockConditioned(nn.Module):
                  skip_connection, 
                  group_norm,
                  time_emb_size = False, 
-                 activation = nn.SiLU):
+                 activation = nn.SiLU,
+                 bin_input=False):
         super(DiffusionBlockConditioned, self).__init__()
         
         self.skip_connection = skip_connection # boolean
         self.act = activation(inplace=False)
         self.time = time_emb_size != False
+        self.bin_input = bin_input
         
         # for the moment, implementing as batch norm
         self.group_norm1 = nn.LayerNorm([nunits]) if group_norm else nn.Identity()
@@ -112,16 +114,24 @@ class DiffusionBlockConditioned(nn.Module):
             self.t_proj = nn.Sequential(self.dropout, 
                                         nn.Linear(time_emb_size, nunits), 
                                         self.act)
+            if self.bin_input:
+                self.t_proj_1 = nn.Sequential(self.dropout, 
+                                        nn.Linear(time_emb_size, nunits), 
+                                        self.act)
+                
         self.mlp_2 = nn.Sequential(self.dropout, 
                                    nn.Linear(nunits, nunits), 
                                    self.group_norm2)
         
-    def forward(self, x: torch.Tensor, t_emb: torch.Tensor):
+    def forward(self, x: torch.Tensor, t_emb: torch.Tensor, bin_input = None):
         if self.skip_connection:
             x_skip = x
         x = self.act(self.mlp_1(x))
         if self.time:
-            x += self.t_proj(t_emb) 
+            if not (self.bin_input) or bin_input == 0:
+                x += self.t_proj(t_emb)
+            else: # bin_input == 1 
+                x += self.t_proj_1(t_emb)
         x = self.mlp_2(x)
         if self.skip_connection:
             x = x + x_skip

@@ -18,6 +18,7 @@ pdmp:
   #- hyvarinen
   - ml
   #- logistic
+  learn_jump_time: false
 
 
 diffusion:
@@ -123,3 +124,4 @@ run:
 
 additional:
   use_softmax: false
+  bin_input_zigzag: false

@@ -51,6 +51,7 @@ pdmp:
   #- square
   #- kl
   #- logistic
+  learn_jump_time: false
 
 # needs a placeholder because of the structure of the program
 nf:
@@ -92,7 +93,7 @@ model:
     skip_connection: true
     beta: 0.2
     threshold: 20
-    time_emb_size: 16
+    time_emb_size: 32
     time_emb_type: learnable
   
   # this is for the other samplers; normalizing flows
@@ -155,3 +156,4 @@ run:
 
 additional:
   use_softmax: false
+  bin_input_zigzag: false

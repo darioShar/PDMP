@@ -152,7 +152,11 @@ def update_parameters_before_loading(p, args):
 
     if args.use_softmax:
         p['additional']['use_softmax'] = args.use_softmax
+
+    if args.bin_input_zigzag:
+        p['additional']['bin_input_zigzag'] = args.bin_input_zigzag
     
+
     # model vae
     if args.model_vae_type is not None:
         p['model']['normalizing_flow']['model_vae_type'] = args.model_vae_type
@@ -166,6 +170,9 @@ def update_parameters_before_loading(p, args):
     if args.vae_x_embedding_size is not None:
         p['model']['normalizing_flow']['vae_x_emb_size'] = args.vae_x_embedding_size
 
+    if args.learn_jump_time is not None:
+        p['pdmp']['learn_jump_time'] = True
+        p['model']['vae'] = True
     return p
 
 
@@ -267,6 +274,7 @@ def parse_args():
     parser.add_argument('--beta', help='for softplus zigzag', default = None, type = float)
     
     parser.add_argument('--use_softmax', help='use softmax in ZigZag', default = False, action='store_true')
+    parser.add_argument('--bin_input_zigzag', help='use binary input method for zigzag', default =False, action='store_true')
 
     # VAE MODEL
     parser.add_argument('--vae', help='Use vae', default = None, action='store_true')
@@ -274,6 +282,11 @@ def parse_args():
     parser.add_argument('--vae_t_embedding_hidden_width', help='Choose VAE normalizing_flow time embedding hidden layer size', default = None, type = int)
     parser.add_argument('--vae_t_embedding_size', help='Choose VAE normalizing_flow time embedding output size', default = None, type = int)
     parser.add_argument('--vae_x_embedding_size', help='Choose VAE normalizing_flow x embedding output size', default = None, type = int)
+
+
+    # Learn the backward time jumps with a normalizing flow
+    # Then automatically learns the backward jump kernel with a conditional VAE
+    parser.add_argument('--learn_jump_time', help='Learn the jump times', default = None, action='store_true')
 
     # PDMP
     parser.add_argument('--sampler', help='choose sampler for PDMP', default = None, type = str)
@@ -283,6 +296,8 @@ def parse_args():
     parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
                         choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple'])
     
+
+
     # DIFFUSION
     parser.add_argument('--alpha', help='alpha value for diffusion', default=None, type = float)
     parser.add_argument('--LIM', help='activate LIM training/sampling', action='store_true', default = False)
