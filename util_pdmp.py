@@ -63,6 +63,7 @@ def update_parameters_before_loading(p, args):
     if args.generate is not None:
         #assert False, 'NYI. eval_files are stored in some folder, and the prdc and fid functions consider all the files in a folder. So if a previous run had generated more data, there is a contamination. To be fixed'
         p['eval']['data_to_generate'] = args.generate
+        assert args.generate <= p['eval']['real_data'], 'Must have more real data stored that number of data points to generate'
     
     # will do the neceassary changes after loading
     if args.lr is not None:
