@@ -224,13 +224,13 @@ class NormalizingFlowModelJumpTime(nn.Module):
             self.x_emb_size = self.nfeatures
         # Neural spline flow (NSF) with dim sample features (V_t) and context features (X_t, t)
         if self.type == 'NSF':
-            self.normalizing_flow_model = zuko.flows.NSF(1, # T_k from E_k
-                               2*self.x_emb_size + 2*self.time_emb_size,
+            self.normalizing_flow_model = zuko.flows.NSF(1 + self.nfeatures, # T_k from E_k
+                               1*self.x_emb_size + 1*self.time_emb_size,
                                transforms=p_model_normalizing_flow['transforms'], #3
                                 hidden_features= [p_model_normalizing_flow['hidden_width']] * p_model_normalizing_flow['hidden_depth'] ) #[128] * 3)
         elif self.type == 'MAF':
-            self.normalizing_flow_model = zuko.flows.MAF(1, # T_k from E_k
-                               2*self.x_emb_size + 2*self.time_emb_size,
+            self.normalizing_flow_model = zuko.flows.MAF(1 + self.nfeatures, # T_k from E_k
+                               1*self.x_emb_size + 1*self.time_emb_size,
                                transforms=p_model_normalizing_flow['transforms'], #3
                                 hidden_features= [p_model_normalizing_flow['hidden_width']] * p_model_normalizing_flow['hidden_depth'] ) #[128] * 3)
         else:
@@ -248,7 +248,7 @@ class NormalizingFlowModelJumpTime(nn.Module):
         v_t = v_t.reshape(v_t.shape[0], -1)
         if self.x_emb_type == 'mlp':
             x_t = self.x_mlp(x_t)
-            v_t = self.v_mlp(v_t)
+            #v_t = self.v_mlp(v_t)
         t = t.reshape(-1, 1)
         E = E.reshape(-1, 1)
         if self.time_emb_type == 'concatenate':
@@ -261,17 +261,18 @@ class NormalizingFlowModelJumpTime(nn.Module):
 
     # return log_prob
     def forward(self, x_t, v_t, t, prev_t, E):
+        # actually not using E anymore
         x_t, v_t, t, E = self._forward(x_t, v_t, t, E)
         prev_t = prev_t.reshape(-1, 1)
-        log_p_t_model = self.normalizing_flow_model(torch.cat([x_t, v_t, t, E], dim = -1)).log_prob(prev_t)
+        log_p_t_model = self.normalizing_flow_model(torch.cat([x_t, t], dim = -1)).log_prob(torch.cat([v_t, prev_t], dim = -1))
         return log_p_t_model
     
     # return v_t
     def sample(self, x_t, v_t, t, E):
-        #data_shape = x_t.shape
+        data_shape = x_t.shape
         x_t, v_t, t, E = self._forward(x_t, v_t, t, E)
-        samples = self.normalizing_flow_model(torch.cat([x_t, v_t, t, E], dim = -1)).sample()
-        samples = samples[:, 0]
-        #samples = samples.reshape(*data_shape)
+        samples = self.normalizing_flow_model(torch.cat([x_t, t], dim = -1)).sample()
+        prev_t, v_t = samples[:, -1], samples[:, :-1]
+        v_t = v_t.reshape(*data_shape)
         #print('output sample shape:', samples.shape)
-        return samples
+        return prev_t, v_t

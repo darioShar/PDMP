@@ -196,16 +196,21 @@ class PDMP:
         if model_vae is not None:
             model_vae.eval()
         t = torch.ones(x.shape[0]).to(self.device) * self.T
+        counter = 0
         with torch.inference_mode():
             while (t > 0).any():
+                counter += 1
                 U = torch.rand(x.shape[0]).to(self.device)
-                prev_t = model.sample(x, v, t, U)
+                prev_t, v = model.sample(x, v, t, U)
+                #prev_t = samples[:, -1]
+                #v = samples[:, :-1]
                 prev_t = torch.minimum(prev_t, t)
                 prev_t = torch.maximum(prev_t, torch.zeros_like(prev_t))
                 delta = t - prev_t
                 delta = match_last_d(delta, x)
                 if get_sample_history:
                     chain.append(torch.concat((x, v), dim = -1))
+                
                 # compute x_n-1 from x_n
                 x_init = x.clone()
                 v_init = v.clone()
@@ -213,7 +218,7 @@ class PDMP:
                 x =   (x_init * torch.cos(delta) - v_init * torch.sin(delta))
                 v =   (x_init * torch.sin(delta) + v_init * torch.cos(delta))
                 
-                v = model_vae.sample(x, prev_t)
+                #v = model_vae.sample(x, prev_t)
 
                 t -= prev_t
                 
@@ -231,7 +236,7 @@ class PDMP:
                 #v_init = v.clone()
                 #x =   (x_init * torch.cos(delta / 2) - v_init * torch.sin(delta / 2))
                 #v =   (x_init * torch.sin(delta / 2) + v_init * torch.cos(delta / 2))
-
+        print('total reverse jumps:', counter)
         if get_sample_history:
             chain.append(torch.concat((x, v), dim = -1))
             return torch.stack(chain)
@@ -667,9 +672,12 @@ class PDMP:
 
         # vae draws from jump kernel
         # model draws the time
-        loss -= model_vae(X_t, V_t, t) # p_t(V_t | X_t, t)
-        loss -= model(X_t, V_t, t, prev_t, E_t) # guess prev_t from X_t, V_t, E_t, t
+        #loss -= model_vae(X_t, V_t, t) # p_t(V_t | X_t, t)
         
+        # now model draws both prev_t and the speed before refreshment
+        #loss -= model(X_t, V_t, t, prev_t, E_t) # guess prev_t from X_t, V_t, E_t, t
+        loss -= model(X_t, V_t, t, prev_t, E_t) # guess prev_t, V_t from V_t, E_t, t
+
         return loss
 
     def training_loss_hmc(self, model, X_t, V_t, t, train_type, model_vae=None):
@@ -896,7 +904,7 @@ class PDMP:
         # generate random time horizons
         if time_horizons is None:
             time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=2)
-
+        
         t = time_horizons.clone().detach().reshape(-1, *[1]*len(X_batch.shape[1:])).repeat(1, *X_batch.shape[1:])
         x = X_batch.clone()        
         # actually faster to switch to cpu for forward process in the case of pdmps
@@ -906,17 +914,17 @@ class PDMP:
         X_batch = X_batch.to(self.device)
         t = t.to(self.device)
         # apply the forward process. Everything runs on the cpu.
-        X_batch, V_batch, prev_t, U = self.forward_jump(X_batch, t, speed = V_batch)
+        X_batch, V_batch, t, prev_t, U = self.forward_jump(X_batch, t, speed = V_batch)
         self.device = device
 
         # check that the time horizon has been reached for all data
         assert not (t > 0.).any()
-        assert not (prev_t <= 0.).any()
+        assert not (prev_t < 0.).any()
 
         while len(t.shape) > 1:
             t = t[:, ..., 0]
             prev_t = prev_t[:, ..., 0]
-        time_reached = time_horizons
+        time_reached = time_horizons - t
         time_prev = time_horizons - prev_t
 
         losses = self.training_loss_hmc_jump_times(model, X_batch, V_batch, time_reached, time_prev, U, train_type=train_type, model_vae=model_vae)
@@ -984,19 +992,18 @@ class PDMP:
             speed = self.draw_velocity(data)
         prev_t = t.detach().clone()
         U = 0
-        while (t > 1e-9).any():
+        while (t > 0).any():
             # Δt_refresh = -torch.log(torch.rand(x.shape[0])) / (refreshment_rate)
-            U = torch.rand((data.shape[0])).to(self.device)
+            U = torch.rand(data.shape[0]).to(self.device)
             U_tmp = U.reshape(-1, *([1]*len(data.shape[1:]))).repeat(1, *data.shape[1:])
-            Δt_refresh = -torch.log(U_tmp) / self.refreshment_rate
-            t_refresh = torch.minimum(t, Δt_refresh)
-            #Δt_refresh = Δt_refresh.to(self.device)
+            t_refresh = -torch.log(U_tmp) / self.refreshment_rate
+            t_refresh = torch.minimum(t, t_refresh)
             x_old = data.clone()
             data *= torch.cos(t_refresh)
             data += speed * torch.sin(t_refresh)
             speed *= torch.cos(t_refresh)
             speed -= x_old * torch.sin(t_refresh)
-            t -= t_refresh
+            t[t>0] -= t_refresh[t>0]
 
             # refresh only if we continue the dynamic. Else we want to retrieve last speed
             speed[t > 0] = torch.randn_like(speed[t > 0])
@@ -1004,7 +1011,7 @@ class PDMP:
             prev_t[t>0] = t[t > 0]
 
         # prev_t contains last time (T - t_{k-1}), t contains (T - t_k) <= 0, and data_{t_k}, speed_{t_k}
-        return data, speed, prev_t, U
+        return data, speed, t, prev_t, U
 
     def forward(self, data, t, speed = None):
         #new_data = data.clone()
