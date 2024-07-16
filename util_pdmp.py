@@ -100,6 +100,13 @@ def update_parameters_before_loading(p, args):
 
     if args.exponent is not None:
         p['eval']['pdmp']['exponent'] = args.exponent
+        p['training']['pdmp']['exponent'] = args.exponent
+
+    if args.exponent_train is not None:
+        p['training']['pdmp']['exponent'] = args.exponent_train
+    
+    if args.exponent_eval is not None:
+        p['eval']['pdmp']['exponent'] = args.exponent_eval
 
 
     if args.vae is not None:
@@ -238,6 +245,8 @@ def parse_args():
     parser.add_argument('--log', help='activate logging to neptune', action='store_true', default=False)
     parser.add_argument('--job_id', help='slurm job id', default=None, type = str)
 
+    parser.add_argument('--exponent_train', help='exponent for timesteps, training', default = None, type = float)
+
     # if training together with a VAE
     parser.add_argument('--train_type', help='Which training to use', default = None, type=str)
     parser.add_argument('--train_alternate', help='altenrate normal and normal_with_vae training', default = None, action='store_true')
@@ -248,7 +257,7 @@ def parse_args():
     parser.add_argument('--no_ema_eval', help='dont evaluate ema models', action='store_true', default = False)
     parser.add_argument('--generate', help='how many images/datapoints to generate', default = None, type = int)
     parser.add_argument('--reverse_steps', help='choose number of reverse_steps', default = None, type = int)
-    parser.add_argument('--exponent', help='exponent in reverse_steps', default = None, type = float)
+    parser.add_argument('--exponent_eval', help='exponent in reverse_steps', default = None, type = float)
     parser.add_argument('--reset_eval', help='reset evaluation metrics', action='store_true', default = False)
 
     parser.add_argument('--ddim', help='use ddim for sampling (diffusion)', default = False, action='store_true')
@@ -295,8 +304,8 @@ def parse_args():
     parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
     parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
     parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
-                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple'])
-    
+                        choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple', 'small_t'])
+    parser.add_argument('--exponent', help='exponent in training and reverse_steps', default = None, type = float)
 
 
     # DIFFUSION

@@ -35,9 +35,9 @@ class PDMP:
         self.learn_jump_time = learn_jump_time
         self.bin_input_zigzag = bin_input_zigzag
 
-        for x in self.add_losses:
-            possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
-            assert x in possible_losses, 'specified loss {} unavailable. Possible losses to choose from : {}'.format(x, possible_losses)
+        #for x in self.add_losses:
+        #    possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
+        #    assert x in possible_losses, 'specified loss {} unavailable. Possible losses to choose from : {}'.format(x, possible_losses)
 
     
     def get_timesteps(self, N, exponent = 2, **kwargs):
@@ -889,22 +889,25 @@ class PDMP:
 
         return loss
     
-    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None):
+    def training_losses(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):
         if self.learn_jump_time:
-            return self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae)
+            return self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
         else:
-            return self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae)
+            return self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
 
 
-    def training_losses_jump_time(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None):
+    def training_losses_jump_time(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):
 
         assert self.sampler == 'HMC', 'training loss jump time only defined for HMC'
         assert model_vae is not None, 'Must use VAE for jump times with HMC'
 
         # generate random time horizons
         if time_horizons is None:
-            time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=2)
-        
+            N=X_batch.shape[0]
+            #time_horizons = torch.exp((torch.randn(N) + np.log(1.0)) * 0.5 * np.log(self.T))
+            #print('time_horizons',time_horizons, time_horizons.mean(), time_horizons.min(), time_horizons.max())
+            time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=exponent)
+         
         t = time_horizons.clone().detach().reshape(-1, *[1]*len(X_batch.shape[1:])).repeat(1, *X_batch.shape[1:])
         x = X_batch.clone()        
         # actually faster to switch to cpu for forward process in the case of pdmps
@@ -929,14 +932,17 @@ class PDMP:
 
         losses = self.training_loss_hmc_jump_times(model, X_batch, V_batch, time_reached, time_prev, U, train_type=train_type, model_vae=model_vae)
 
+        if 'small_t' in self.add_losses:
+            losses /= (time_horizons.to(self.device))**2
+        
         return losses.mean()
 
 
-    def training_losses_chain(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None):
+    def training_losses_chain(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):
         
         # generate random time horizons
         if time_horizons is None:
-            time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=2)
+            time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=exponent)
             #time_horizons = self.T * (torch.rand(X_batch.shape[0])**2)
 
         # must be of the same shape as Xbatch for the pdmp forward process, since it will be applied component wise

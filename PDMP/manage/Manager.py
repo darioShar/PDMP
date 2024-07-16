@@ -74,7 +74,7 @@ class Manager:
                         # batch_loss is nan, reintialize vae
             if np.isnan(batch_loss): 
                 if self.model_vae is not None:
-                    print('reinitializing model vae')
+                    print('reinitializing model_vae, which is likely causing nan in batch loss')
                     m, o, l = self.reset_vae(self.p)
                     self.model_vae = m
                     self.optimizer_vae = o
@@ -144,7 +144,8 @@ class Manager:
                 
                 if is_image:
                     # for image datasets.
-                    Xbatch += 2*torch.rand_like(Xbatch) / (256)
+                    #Xbatch += 0.1*torch.rand_like(Xbatch) / (256)
+                    pass
 
                 if (self.model_vae is not None):
                     if not train_alternate:

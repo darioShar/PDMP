@@ -343,10 +343,11 @@ def init_model_by_parameter(p):
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             data_dim = p['data']['image_size']**2 * p['data']['channels']
             if p['pdmp']['learn_jump_time']:
-                model = NormalizingFLow.NormalizingFlowModelJumpTime(nfeatures=p['data']['dim'], 
-                                                            device=p['device'], 
-                                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
-                                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
+                model = VAE.VAEJumpTime(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+                #model = NormalizingFLow.NormalizingFlowModelJumpTime(nfeatures=p['data']['dim'], 
+                #                                            device=p['device'], 
+                #                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
+                #                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
             else:
                 model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                             device=p['device'], 

@@ -60,7 +60,7 @@ nf:
 
 eval:
   data_to_generate: 10000
-  batch_size: 128
+  batch_size: 4096
   real_data: 10000 # in case of images, number of real images to store and to compare to
 
   pdmp:
@@ -125,6 +125,7 @@ training:
     grad_clip: null #1.0
     train_type: NORMAL # This is for training conjointly with VAE. assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false
+    exponent: 2.0
   # no need to touch this, default for diffusion
   diffusion:
     ema_rates: null

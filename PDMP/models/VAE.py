@@ -216,3 +216,71 @@ class MultiVAE(nn.Module):
             t_masked = t[t_mask]
             v_t[t_mask] = self.vae_list[i].sample(x_t_mask, t_masked)
         return v_t
+    
+
+class VAEJumpTime(nn.Module):
+
+    def __init__(self, nfeatures, p_model_nf):
+        super(VAEJumpTime, self).__init__()
+        
+        self.nfeatures=nfeatures
+        
+        time_mlp_hidden_features = p_model_nf['model_vae_t_hidden_width'] #128 # 128
+        time_mlp_output_dim = p_model_nf['model_vae_t_emb_size'] #32 # 32
+        
+        x_mlp_hidden_features = hidden_dim_codec 
+        x_mlp_output_dim = p_model_nf['model_vae_x_emb_size'] #64 # 256
+
+        assert self.nfeatures == 1024
+        
+        self.act = nn.SiLU(inplace=False)
+        
+        self.encoder = GaussianModel(16, self.nfeatures+1)
+        self.decoder = BernoulliModel(self.nfeatures+1, 16)
+
+        self.prior = zuko.flows.MAF(
+            features=16,
+            context=x_mlp_output_dim + time_mlp_output_dim,
+            transforms=3,
+            hidden_features=(256, 256),
+        )
+
+        self.elbo = ELBO(self.encoder, self.decoder, self.prior)
+        
+
+        self.time_mlp = nn.Sequential(nn.Linear(1, time_mlp_hidden_features),
+                                    self.act,
+                                    nn.Linear(time_mlp_hidden_features, time_mlp_hidden_features), 
+                                    self.act,
+                                    nn.Linear(time_mlp_hidden_features, time_mlp_output_dim), 
+                                    self.act)
+
+        self.x_mlp = nn.Sequential(nn.Linear(1024, x_mlp_hidden_features),
+                                    self.act,
+                                    nn.Linear(x_mlp_hidden_features, x_mlp_hidden_features), 
+                                    self.act,
+                                    nn.Linear(x_mlp_hidden_features, x_mlp_output_dim), 
+                                    self.act)
+    
+    # elbo loss
+    def forward(self, x_t, v_t, t, t_prev, E):
+        x_t, t = self._forward(x_t, t)
+        v_t = v_t.reshape(x_t.shape[0], -1)
+        t_prev = t_prev.reshape(-1, 1)
+        return self.elbo(torch.cat([v_t, t_prev], dim = -1), torch.cat([x_t, t], dim = -1))
+
+    def _forward(self, x_t, t):
+        x_t = x_t.reshape(x_t.shape[0], -1)
+        x_t = self.x_mlp(x_t)
+        t = t.reshape(-1, 1)
+        t = self.time_mlp(t)#timestep.to(torch.float32))
+        return x_t, t
+    
+    # return v_t
+    def sample(self, x_t, v_t, t, E):
+        x_t, t = self._forward(x_t, t)
+        z = self.prior(torch.cat([x_t, t], dim = -1)).sample((1,))[0]
+        x = self.decoder(z).mean
+        v_t, t_prev = x[:, :-1], x[:, -1]
+        v_t = v_t.reshape(-1, 1, 32, 32)
+        return t_prev, v_t
