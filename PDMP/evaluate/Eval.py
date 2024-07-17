@@ -163,7 +163,6 @@ class Eval:
                 # generate more data if necessary
                 #data_to_gen_wass : really is the batch size now. We use some approximation.
                 data_batch_size = batch_size # len(self.dataset_files) // len(self.dataloader) #1024
-
                 gen_samples = torch.tensor([])
                 fid_data_to_generate = max(data_batch_size, data_to_generate) # 2048
                 remaining = data_to_generate

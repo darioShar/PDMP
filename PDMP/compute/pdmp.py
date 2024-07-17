@@ -904,9 +904,9 @@ class PDMP:
         # generate random time horizons
         if time_horizons is None:
             N=X_batch.shape[0]
-            #time_horizons = torch.exp((torch.randn(N) + np.log(1.0)) * 0.5 * np.log(self.T))
+            time_horizons = torch.exp((torch.randn(N) + np.log(1.0)) * 0.5 * np.log(self.T))
             #print('time_horizons',time_horizons, time_horizons.mean(), time_horizons.min(), time_horizons.max())
-            time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=exponent)
+            #time_horizons = self.get_random_timesteps(N=X_batch.shape[0], exponent=exponent)
          
         t = time_horizons.clone().detach().reshape(-1, *[1]*len(X_batch.shape[1:])).repeat(1, *X_batch.shape[1:])
         x = X_batch.clone()        

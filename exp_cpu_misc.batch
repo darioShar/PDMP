@@ -42,4 +42,8 @@ t=(2 5 10)
 
 
 # MNIST
-python ./run_pdmp.py --config mnist --name mnist_jump_time --sampler HMC --time_horizon 5 --epochs 100 --eval 5 --loss ml --learn_jump_time --log
+python ./run_pdmp.py --config mnist --name mnist_jump_time --sampler HMC --time_horizon 5 --epochs 100 --eval 5 --loss ml --learn_jump_time --model_vae_type VAE_1 --log
+
+#python ./run_pdmp.py --config mnist --name tmp --noising_process nf --epochs 100 --eval 5 --loss ml --model_vae_type VAE_1
+
+

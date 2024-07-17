@@ -20,6 +20,9 @@ pdmp:
   #- logistic
   learn_jump_time: false
 
+# needs a placeholder because of the structure of the program
+nf:
+  placeholder:  # need to define a placeholder
 
 diffusion:
   alpha: 2.0
@@ -52,6 +55,9 @@ eval:
     ddim: false
     eta: 1.0
     #new_time_spacing
+  # needs a placeholder because of the structure of the program
+  nf:
+    placeholder:  # need to define a placeholder
 
 model:
   unet:
@@ -90,6 +96,13 @@ model:
     model_vae_x_emb_size: 64
   vae: false
 
+  # use a simple normalizing flow / vae for generation
+  nf:
+    transforms: 8
+    hidden_width: 256
+    hidden_depth: 8
+    model_type: NSF
+
 training:
   pdmp:
     ema_rates:
@@ -106,12 +119,14 @@ training:
     lploss: 2.
     monte_carlo_steps: 1 
     monte_carlo_groups: 1 
-
+  # needs a placeholder because of the structure of the program
+  nf:
+    placeholder:
 
 optim:
   optimizer: adamw
   schedule: null #steplr
-  lr: 0.0001
+  lr: 0.0002
   warmup: 50 #100
   lr_steps: 300000
   lr_step_size: 150

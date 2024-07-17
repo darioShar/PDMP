@@ -343,13 +343,18 @@ def init_model_by_parameter(p):
             # Neural spline flow (NSF) with dim sample features (V_t) and dim + 1 context features (X_t, t)
             data_dim = p['data']['image_size']**2 * p['data']['channels']
             if p['pdmp']['learn_jump_time']:
-                model = VAE.VAEJumpTime(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+                model_vae_type = p['model']['normalizing_flow']['model_vae_type']
+                if model_vae_type == 'VAE_1':
+                    model = VAE.VAEJumpTime(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+                elif model_vae_type == 'VAE_16': 
+                    model = VAE.MultiVAEJumpTime(nfeatures=data_dim, n_vae=16, time_horizon=p['pdmp']['time_horizon'], p_model_nf=p['model']['normalizing_flow'])
+                    
                 #model = NormalizingFLow.NormalizingFlowModelJumpTime(nfeatures=p['data']['dim'], 
                 #                                            device=p['device'], 
                 #                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
                 #                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
             else:
-                model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+                model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['image_size'], 
                                                             device=p['device'], 
                                                             p_model_normalizing_flow=p['model']['normalizing_flow'],
                                                             unet=_unet_model(p, p_model_unet=p['model']['unet']))
@@ -360,7 +365,7 @@ def init_model_vae_by_parameter(p):
     # model
     if not p['model']['vae']:
         return None
-    
+    method = p['noising_process'] if p['noising_process'] in ['diffusion', 'nf'] else p['pdmp']['sampler']
     if not is_image_dataset(p['data']['dataset']):
         model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                         device=p['device'], 
@@ -368,10 +373,13 @@ def init_model_vae_by_parameter(p):
     else:
         data_dim = p['data']['image_size']**2 * p['data']['channels']
         model_vae_type = p['model']['normalizing_flow']['model_vae_type']
-        if model_vae_type == 'VAE_1':
-            model = VAE.VAE(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
-        elif model_vae_type == 'VAE_16': 
-            model = VAE.MultiVAE(nfeatures=data_dim, n_vae=16, time_horizon=p['pdmp']['time_horizon'], p_model_nf=p['model']['normalizing_flow'])
+        if method == 'nf':
+            model = VAE.VAESimple(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+        else:
+            if model_vae_type == 'VAE_1':
+                model = VAE.VAE(nfeatures=data_dim, p_model_nf=p['model']['normalizing_flow'])
+            elif model_vae_type == 'VAE_16': 
+                model = VAE.MultiVAE(nfeatures=data_dim, n_vae=16, time_horizon=p['pdmp']['time_horizon'], p_model_nf=p['model']['normalizing_flow'])
     return model.to(p['device'])
 
 def init_data_by_parameter(p):

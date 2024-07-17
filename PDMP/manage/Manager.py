@@ -144,9 +144,7 @@ class Manager:
                 
                 if is_image:
                     # for image datasets.
-                    #Xbatch += 0.1*torch.rand_like(Xbatch) / (256)
-                    pass
-
+                    Xbatch += 0.5*torch.rand_like(Xbatch) / (256)
                 if (self.model_vae is not None):
                     if not train_alternate:
                         train_type = ['VAE']

@@ -37,10 +37,11 @@ class NF:
                         ):
         assert initial_data is None, 'Using specified initial data is not yet implemented.'
         
-        samples = model().sample((shape[0], 1))
+        if model_vae is not None:
+            samples = model_vae.sample(shape[0])
+        else:
+            samples = model().sample((shape[0], 1))
 
-        print('samples', samples.shape)
-        print('shape', shape)
         return samples if not get_sample_history else [samples]
   
 
@@ -51,8 +52,11 @@ class NF:
                         train_type=['NORMAL'], 
                         model_vae=None,
                         placeholder=None,):
-        #
-        loss = -model().log_prob(X_batch.to(self.device))
+    
+        if model_vae is not None:
+            loss = - model_vae(X_batch.to(self.device))
+        else:
+            loss = -model().log_prob(X_batch.to(self.device))
         
         return loss.mean() #/ torch.prod(torch.tensor(X_batch.shape[1:]))
     
