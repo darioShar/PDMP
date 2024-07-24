@@ -1,12 +1,13 @@
 seed: null
 
 data:
-  channels: 1
-  dataset: mnist
-  image_size: 32 # resize, must be multiple of 32
-  num_workers: 4 # number of workers for data loading
+  channels: 3
+  dataset: cifar10
+  image_size: 32
   random_flip: true
-  bs: 256 # batch size
+  num_workers: 4 # 2* num_GPU
+  #num_classes: 2
+  bs: 64 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 
@@ -59,10 +60,12 @@ eval:
   nf:
     placeholder:  # need to define a placeholder
 
+  
+
 model:
   unet:
     model_type: "ddpm"
-    attn_resolutions: [2, 4]
+    attn_resolutions: [2, 4, 16] # maybe [16,]
     channel_mult: [1, 2, 2, 2]
     compute_gamma: false
     dropout: 0.1
@@ -81,19 +84,19 @@ model:
 #    x_emb_size: 32
 #    x_emb_type: mlp # mlp, unet
 #  vae: false
-    transforms: 8
+    transforms: 9
     hidden_width: 2048 # 2048
     hidden_depth: 4
     time_emb_size: 512
     time_emb_type: learnable
-    x_emb_size: 16 # no effect with unet
+    x_emb_size: 16
     x_emb_type: unet # mlp, unet
     model_type: MAF # NSF, MAF
 
-    model_vae_hidden_features: 16
+    model_vae_hidden_features: 64
     model_vae_type: VAE_16 # VAE_1, VAE_16
-    model_vae_t_hidden_width: 128
-    model_vae_t_emb_size: 32
+    model_vae_t_hidden_width: 64
+    model_vae_t_emb_size: 64
     model_vae_x_emb_size: 64
   vae: false
 
@@ -103,19 +106,20 @@ model:
     hidden_width: 256
     hidden_depth: 8
     model_type: NSF
+  
 
 
 training:
   pdmp:
     ema_rates:
-    - 0.99
+    - 0.9999
     grad_clip: 1.0 #1.0
     train_type: NORMAL # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false
     exponent: 2.0
   diffusion:
     ema_rates: 
-    - 0.99
+    - 0.9999
     grad_clip: null #1.0
     loss_monte_carlo: mean # loss to apply on batch of M number of a's. can be mean or median
     lploss: 2.
@@ -125,20 +129,22 @@ training:
   nf:
     placeholder:
 
+
 optim:
   optimizer: adamw
   schedule: null #steplr
   lr: 0.0002
-  warmup: 50 #100
+  warmup: 500 #100
   lr_steps: 300000
-  lr_step_size: 150
+  lr_step_size: 1000
   lr_gamma: 0.99
 
 run:
-  epochs: 50
+  epochs: 400 #10000
   eval_freq: null
-  checkpoint_freq: 25
+  checkpoint_freq: 50
   progress: true # print progress bar
+
 
 additional:
   use_softmax: false

@@ -354,7 +354,7 @@ def init_model_by_parameter(p):
                 #                                            p_model_normalizing_flow=p['model']['normalizing_flow'],
                 #                                            unet=_unet_model(p, p_model_unet=p['model']['unet']))
             else:
-                model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['image_size'], 
+                model = NormalizingFLow.NormalizingFlowModel(nfeatures=data_dim, 
                                                             device=p['device'], 
                                                             p_model_normalizing_flow=p['model']['normalizing_flow'],
                                                             unet=_unet_model(p, p_model_unet=p['model']['unet']))

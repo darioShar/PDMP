@@ -534,7 +534,6 @@ class PDMP:
     # The first C channels correspond to velocity=-1, the second to velocity=1. 
     # so we use torch.gather using the velocity tensor to retrieve the densities we need.
     def get_densities_from_zigzag_output(self, output, v):
-        index = ((v +1.) / 2.0).type(torch.int64)
         B, C = v.shape[:2]
         assert C == 1, 'only one channel is supported right now'
         assert output.shape == (B, C * 2, *output.shape[2:])
@@ -556,8 +555,16 @@ class PDMP:
             # Optionally reshape back to the original shape if needed
             output = ratios.view(B, 2*C, *output.shape[2:])
 
-        selected_output = torch.gather(output, 1, index)
-        selected_output_inv = torch.gather(output, 1, 1 - index)
+        index = ((v +1.) / 2.0).bool()
+        selected_output = torch.zeros_like(v)
+        selected_output_inv = torch.zeros_like(v)
+        selected_output = output[:, :C, ...] # select v = 0
+        selected_output[index] = output[:, C:, ...][index] # select v = 1
+        selected_output_inv = output[:, C:, ...] # select v = 1
+        selected_output_inv[index] = output[:, :C, ...][index] # select v = 0
+        
+        # selected_output = torch.gather(output, 1, index)
+        # selected_output_inv = torch.gather(output, 1, 1 - index)
 
         return selected_output, selected_output_inv
 

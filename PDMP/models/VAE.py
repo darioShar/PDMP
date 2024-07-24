@@ -132,24 +132,25 @@ class VAE(nn.Module):
         super(VAE, self).__init__()
         
         self.nfeatures=nfeatures
-        
+        self.hidden_features = p_model_nf['model_vae_hidden_features']
+
         time_mlp_hidden_features = p_model_nf['model_vae_t_hidden_width'] #128 # 128
         time_mlp_output_dim = p_model_nf['model_vae_t_emb_size'] #32 # 32
         
         x_mlp_hidden_features = hidden_dim_codec 
         x_mlp_output_dim = p_model_nf['model_vae_x_emb_size'] #64 # 256
 
-        assert self.nfeatures == 1024
+        # assert self.nfeatures == 1024
         
         self.act = nn.SiLU(inplace=False)
         
-        self.encoder = GaussianModel(16, 1024)
-        self.decoder = GaussianModel(1024, 16)
+        self.encoder = GaussianModel(self.hidden_features, self.nfeatures)
+        self.decoder = GaussianModel(self.nfeatures, self.hidden_features)
 
         self.prior = zuko.flows.MAF(
-            features=16,
+            features=self.hidden_features,
             context=x_mlp_output_dim + time_mlp_output_dim,
-            transforms=3,
+            transforms=4,
             hidden_features=(256, 256),
         )
 
@@ -163,7 +164,7 @@ class VAE(nn.Module):
                                     nn.Linear(time_mlp_hidden_features, time_mlp_output_dim), 
                                     self.act)
 
-        self.x_mlp = nn.Sequential(nn.Linear(1024, x_mlp_hidden_features),
+        self.x_mlp = nn.Sequential(nn.Linear(self.nfeatures, x_mlp_hidden_features),
                                     self.act,
                                     nn.Linear(x_mlp_hidden_features, x_mlp_hidden_features), 
                                     self.act,
@@ -185,9 +186,10 @@ class VAE(nn.Module):
     
     # return v_t
     def sample(self, x_t, t):
+        data_shape = x_t.shape
         x_t, t = self._forward(x_t, t)
         z = self.prior(torch.cat([x_t, t], dim = -1)).sample((1,))
-        x = self.decoder(z).mean.reshape(-1, 1, 32, 32)
+        x = self.decoder(z).mean.reshape(*data_shape)
         return x
     
 class MultiVAE(nn.Module):
@@ -199,8 +201,8 @@ class MultiVAE(nn.Module):
         self.n_vae = n_vae
         self.time_horizon = time_horizon
         
-        assert self.nfeatures == 1024, 'only implemented on 32x32 mnist at the moment'
-        #assert self.time_horizon == 10, 'only implements time horizon ==10 for the moment'
+        # assert self.nfeatures == 1024, 'only implemented on 32x32 mnist at the moment'
+        # assert self.time_horizon == 10, 'only implements time horizon ==10 for the moment'
         assert self.n_vae == 16, 'only implements n_vae==16 for the moment'
 
         self.vae_t_bins = self.vae_time_bins()
