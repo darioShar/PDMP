@@ -24,4 +24,5 @@ models/**
 old/**
 scratch/**
 best_mnist_img/**
-img/**
+img**
+tmp/**

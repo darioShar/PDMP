@@ -4,7 +4,7 @@ data:
   channels: 1
   dataset: mnist
   image_size: 32 # resize, must be multiple of 32
-  num_workers: 4 # number of workers for data loading
+  num_workers: 2 # number of workers for data loading
   random_flip: true
   bs: 256 # batch size
 
@@ -19,6 +19,7 @@ pdmp:
   # - ml
   #- logistic
   learn_jump_time: false
+  denoiser: false
 
 # needs a placeholder because of the structure of the program
 nf:
@@ -38,9 +39,9 @@ diffusion:
 
 
 eval:
-  data_to_generate: 128
-  batch_size: 128
-  real_data: 1024 # in case of images, number of real images to store and to compare to
+  data_to_generate: 1000
+  batch_size: 256
+  real_data: 5000 # in case of images, number of real images to store and to compare to
 
   pdmp:
     backward_scheme: splitting # euler

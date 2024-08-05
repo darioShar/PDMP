@@ -36,7 +36,8 @@ def hash_parameters(p):
     # check that different samplers give different hashes!!!!
     # wtf
     model_param = model_param_to_use(p)
-    print('attention: retro-compatibility with normalizing flow in hash parameter: not discrimnating model_type and model_vae_type')
+    # print('attention: retro-compatibility with normalizing flow in hash parameter: not discrimnating model_type and model_vae_type')
+    
     #retro_compatibility = ['x_emb_type', 'x_emb_size']
     retro_compatibility = ['model_type', 
                            'model_vae_type', 
@@ -191,7 +192,7 @@ def prepare_data_directories(dataset_name, dataset_files, remove_existing_eval_f
         # remove the directory
         if not dir.is_dir():
             raise ValueError(f'{dir} is not a directory')
-        print('removing files in directory', dir)
+        # print('removing files in directory', dir)
         for file in dir.iterdir():
             file.unlink()
 
@@ -277,9 +278,9 @@ def _unet_model(p, p_model_unet, bin_input_zigzag=False):
             num_heads_upsample=-1, # same as num_heads
             use_scale_shift_norm=True,
             beta = p_model_unet['beta'] if p['pdmp']['sampler'] == 'ZigZag' else None,
-            threshold = p_model_unet['threshold'] if p['pdmp']['sampler'] == 'ZigZag' else None
+            threshold = p_model_unet['threshold'] if p['pdmp']['sampler'] == 'ZigZag' else None,
+            denoiser=p['pdmp']['denoiser'],
         )
-
     return model
 
 def model_param_to_use(p):
@@ -288,6 +289,8 @@ def model_param_to_use(p):
             return p['model']['unet']
         else:
             return p['model']['mlp']
+    elif p['noising_process'] == 'nf':
+        return p['model']['nf']
     elif p['pdmp']['sampler'] == 'ZigZag':
         if is_image_dataset(p['data']['dataset']):
             return p['model']['unet']
@@ -367,9 +370,12 @@ def init_model_vae_by_parameter(p):
         return None
     method = p['noising_process'] if p['noising_process'] in ['diffusion', 'nf'] else p['pdmp']['sampler']
     if not is_image_dataset(p['data']['dataset']):
-        model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
+        if method == 'diffusion':
+            model = NormalizingFLow.NormalizingFlowModel(nfeatures=p['data']['dim'], 
                                                         device=p['device'], 
                                                         p_model_normalizing_flow=p['model']['normalizing_flow'])
+        else:
+            model = VAE.VAESimpleND(nfeatures=p['data']['dim'], device=p['device'])
     else:
         data_dim = p['data']['image_size']**2 * p['data']['channels']
         model_vae_type = p['model']['normalizing_flow']['model_vae_type']
@@ -409,7 +415,8 @@ def init_noising_process_by_parameter(p):
                         add_losses= p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [],
                         use_softmax= p['additional']['use_softmax'],
                         learn_jump_time=p['pdmp']['learn_jump_time'],
-                        bin_input_zigzag = p['additional']['bin_input_zigzag']
+                        bin_input_zigzag = p['additional']['bin_input_zigzag'],
+                        denoiser = p['pdmp']['denoiser']
                         )
     elif p['noising_process'] == 'diffusion':
         noising_process = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],

@@ -61,9 +61,9 @@ class GenerationManager:
             self.samples = x[..., :data.shape[-1]] # select positions in case of pdmp
         self.samples = self.samples.clamp(-clamp, clamp).cpu()
         if self.is_image:
-            print('samples generated:', self.samples.mean(), self.samples.min(),self.samples.max())
+            # print('samples generated:', self.samples.mean(), self.samples.min(),self.samples.max())
             self.samples = inverse_affine_transform(self.samples)
-            print('samples generated, inverse affine transform:', self.samples.mean(), self.samples.min(),self.samples.max())
+            # print('samples generated, inverse affine transform:', self.samples.mean(), self.samples.min(),self.samples.max())
             if len(self.history) != 0:
                 self.history = torch.stack([inverse_affine_transform(h) for h in self.history]) # apply inverse transform
 

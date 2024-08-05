@@ -78,6 +78,9 @@ def update_parameters_before_loading(p, args):
 
     if args.dataset is not None:
         p['data']['dataset'] = args.dataset
+    
+    if args.nsamples is not None:
+        p['data']['nsamples'] = args.nsamples
 
     # Now for pdmp
     if args.sampler is not None:
@@ -117,6 +120,9 @@ def update_parameters_before_loading(p, args):
     
     if args.train_alternate is not None:
         p['training']['pdmp']['train_alternate'] = args.train_alternate
+
+    if args.denoiser is not None:
+        p['pdmp']['denoiser'] = args.denoiser
     
     # model
     if args.blocks is not None:
@@ -265,6 +271,7 @@ def parse_args():
 
     # DATA
     parser.add_argument('--dataset', help='choose specific dataset', default = None, type = str)
+    parser.add_argument('--nsamples', help='choose the size of the dataset (only 2d datasets)', default = None, type = str)
 
     # OPTIMIZER
     parser.add_argument('--lr', help='reinitialize learning rate', type=float, default = None)
@@ -306,6 +313,7 @@ def parse_args():
     parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
                         choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple', 'small_t'])
     parser.add_argument('--exponent', help='exponent in training and reverse_steps', default = None, type = float)
+    parser.add_argument('--denoiser', help='use denoiser in pdmp model', default = None, action='store_true')
 
 
     # DIFFUSION

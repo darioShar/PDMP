@@ -35,12 +35,18 @@ class NF:
                         get_sample_history = False,
                         placeholder=None,
                         ):
+
         assert initial_data is None, 'Using specified initial data is not yet implemented.'
         
+        model.eval()
         if model_vae is not None:
-            samples = model_vae.sample(shape[0])
-        else:
-            samples = model().sample((shape[0], 1))
+            model_vae.eval()
+
+        with torch.inference_mode():
+            if model_vae is not None:
+                samples = model_vae.sample(shape[0])
+            else:
+                samples = model().sample((shape[0], 1))
 
         return samples if not get_sample_history else [samples]
   

@@ -97,7 +97,7 @@ class MLPModel(nn.Module):
         # Here we construct the model 'blocks'
         infeatures = self.nfeatures + self.additional_dim if not self.bin_input_zigzag else 2*self.nfeatures + self.additional_dim
         self.linear_in =  nn.Linear(infeatures, self.nunits) # for ZigZag, take d dimension and output 2d dimension
-        print('infeatures:' ,infeatures)
+        
         self.inblock = nn.Sequential(self.linear_in,
                                      self.group_norm_in, 
                                      self.act)
@@ -148,7 +148,7 @@ class MLPModel(nn.Module):
             val = torch.split(val, val.shape[-1]//2, dim=-1)
             val = torch.concatenate(val, dim = 1) # add channels
         val = torch.nn.functional.softplus(val, beta=self.beta, threshold=self.threshold)
-        print(val.mean(), val.std())
+        # print(val.mean(), val.std())
         return val
     
     

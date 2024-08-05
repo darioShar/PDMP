@@ -52,6 +52,7 @@ pdmp:
   #- kl
   #- logistic
   learn_jump_time: false
+  denoiser: false
 
 # needs a placeholder because of the structure of the program
 nf:
@@ -112,7 +113,7 @@ model:
   
   # use a simple normalizing flow for generation
   nf:
-    transforms: 8
+    transforms: 3
     hidden_width: 256
     hidden_depth: 8
     model_type: NSF

@@ -22,7 +22,8 @@ class PDMP:
                  add_losses = [],
                  use_softmax = False, # for ZigZag output
                  learn_jump_time = False,
-                 bin_input_zigzag=False
+                 bin_input_zigzag=False,
+                 denoiser=False
                  ):
         self.T = time_horizon
         self.reverse_steps = reverse_steps
@@ -34,6 +35,7 @@ class PDMP:
         self.use_softmax = use_softmax
         self.learn_jump_time = learn_jump_time
         self.bin_input_zigzag = bin_input_zigzag
+        self.denoiser = denoiser
 
         #for x in self.add_losses:
         #    possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
@@ -65,7 +67,7 @@ class PDMP:
                         ):
         assert initial_data is None, 'Using specified initial data is not yet implemented.'
         
-        print('sampling with exponent {}'.format(exponent))
+        # print('sampling with exponent {}'.format(exponent))
 
         reverse_sample_func = {
             'ZigZag': {
@@ -90,7 +92,18 @@ class PDMP:
         
         func = reverse_sample_func[self.sampler][backward_scheme]
         assert func is not None, '{} not yet implemented'.format((self.sampler, backward_scheme))
-        samples_or_chain = func(model,
+        if self.denoiser:
+            samples_or_chain = func(model,
+                                model_vae,
+                                self.T, 
+                                reverse_steps,
+                                shape = shape,
+                                exponent=exponent,
+                                print_progession=print_progression,
+                                get_sample_history = get_sample_history,
+                                eps = 0.1) # use denoiser from eps to 0
+        else:
+            samples_or_chain = func(model,
                                 model_vae,
                                 self.T, 
                                 reverse_steps,
@@ -129,7 +142,10 @@ class PDMP:
                           v_init=None,
                           exponent = 2.,
                           print_progession = False, 
-                          get_sample_history = False):
+                          get_sample_history = False,
+                          eps = None):
+        assert eps is None, 'denoiser nyi in zigzag reverse sampling'
+        
         if print_progession:
             print_progession = lambda x : tqdm(x)
         else:

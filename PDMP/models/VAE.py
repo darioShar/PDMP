@@ -40,10 +40,10 @@ class ELBO(nn.Module):
         z = q.rsample()
         if c is not None:
             kl_loss = self.prior(c).log_prob(z) - q.log_prob(z)
-            return self.decoder(z).log_prob(x) + 0.1*kl_loss
+            return self.decoder(z).log_prob(x) + kl_loss
         else:
             kl_loss = self.prior().log_prob(z) - q.log_prob(z)
-            return self.decoder(z).log_prob(x) + 0.0001*kl_loss
+            return self.decoder(z).log_prob(x) + 0.1*kl_loss
     
 
 
@@ -122,6 +122,81 @@ class VAESimple(nn.Module):
     def sample(self, nsamples):
         z = self.prior().sample((nsamples,))
         x = self.decoder(z).mean.reshape(-1, 1, 32, 32)
+        return affine_transform(x)
+
+
+
+class MyGaussianModel(zuko.flows.LazyDistribution):
+    def __init__(self, in_features: int, out_features: int, nblocks, nunits, learn_variance):
+        super().__init__()
+        
+        self.in_features = in_features
+        self.out_features = out_features
+
+        self.learn_variance = learn_variance
+
+        layers = [nn.Linear(in_features, nunits)]
+        layers.append(nn.ReLU())
+        for i in range(nblocks):
+            layers.append(nn.Linear(nunits, nunits))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(nunits, self.out_features))
+
+        self.hyper = nn.Sequential(*layers)
+
+    def forward(self, c) -> Distribution:
+        phi = self.hyper(c)
+        if self.learn_variance:
+            mu, log_sigma = phi.chunk(2, dim=-1)
+        else:
+            mu, log_sigma = phi, torch.zeros_like(phi)
+        #mu = torch.zeros((hidden_dim_codec, self.features))
+        #log_sigma = torch.zeros((hidden_dim_codec, self.features))
+            
+        return Independent(Normal(mu, log_sigma.exp()), 1)
+    
+
+class StandardGaussianModel(zuko.flows.LazyDistribution):
+    def __init__(self, nfeatures, device):
+        super().__init__()
+        self.nfeatures = nfeatures
+        self.device = device
+        self.mu = torch.zeros(nfeatures).to(device)
+        self.sigma = torch.ones(nfeatures).to(device)
+
+    def forward(self):
+        return Independent(torch.distributions.Normal(self.mu, self.sigma), 1)
+    
+
+class VAESimpleND(nn.Module):
+    def __init__(self, nfeatures, device):
+        super(VAESimpleND, self).__init__()
+        
+        self.nfeatures=nfeatures
+        self.device = device
+
+        
+        self.act = nn.SiLU(inplace=False)
+        
+        self.encoder = MyGaussianModel(nfeatures, 16, nblocks=8, nunits=64, learn_variance=False)
+        self.decoder = MyGaussianModel(16, 2*nfeatures, nblocks=8, nunits=64, learn_variance=True) # estimate variance too
+
+
+        self.prior = StandardGaussianModel(16, device)
+
+        self.elbo = ELBO(self.encoder, self.decoder, self.prior)
+        
+
+    # elbo loss
+    def forward(self, x):
+        x = x.reshape(x.shape[0], -1)
+        x = inverse_affine_transform(x)
+        return self.elbo(x)
+    
+    # return v_t
+    def sample(self, nsamples):
+        z = self.prior().sample((nsamples,))
+        x = self.decoder(z).mean.reshape(-1, 1, self.nfeatures)
         return affine_transform(x)
 
 
