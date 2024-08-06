@@ -29,14 +29,16 @@ epochs=500
 
 
 
-samplers=('ZigZag' 'BPS' 'HMC')
-loss=('hyvarinen' 'ml' 'ml')
+# samplers=('ZigZag' 'BPS' 'HMC')
+# loss=('hyvarinen' 'ml' 'ml')
+samplers=('HMC')
+loss=('ml')
 nsamples=(250 500 1000 2500 10000)
 epochs=(12000 6000 3000 1200 300)
 eval=(2000 1000 500 200 50)
 
 for i in $(seq 0 $((${#samplers[@]} - 1))) ; do
-    python ./run_pdmp.py --config 2d_data --name cleps/sample_complexity_${nsamples[${SLURM_ARRAY_TASK_ID}]} --epochs ${epochs[${SLURM_ARRAY_TASK_ID}]} --eval ${eval[${SLURM_ARRAY_TASK_ID}]} --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate 1.0 --loss ${loss[${i}]} --dataset rose --nsamples ${nsamples[${SLURM_ARRAY_TASK_ID}]} --log
+    python ./run_pdmp.py --config 2d_data --name cleps/sample_complexity_${nsamples[${SLURM_ARRAY_TASK_ID}]} --epochs ${epochs[${SLURM_ARRAY_TASK_ID}]} --eval ${eval[${SLURM_ARRAY_TASK_ID}]} --reverse_steps 100 --noising_process pdmp --sampler ${samplers[${i}]} --refresh_rate 1.0 --loss ${loss[${i}]} --dataset gmm_grid --nsamples ${nsamples[${SLURM_ARRAY_TASK_ID}]} --log
 done
 
-python ./run_pdmp.py --config 2d_data --name cleps/sample_complexity_${nsamples[${SLURM_ARRAY_TASK_ID}]} --epochs ${epochs[${SLURM_ARRAY_TASK_ID}]} --eval ${eval[${SLURM_ARRAY_TASK_ID}]} --reverse_steps 100 --noising_process diffusion --dataset rose --nsamples ${nsamples[${SLURM_ARRAY_TASK_ID}]} --log --alpha 2.0 --loss ml
+python ./run_pdmp.py --config 2d_data --name cleps/sample_complexity_${nsamples[${SLURM_ARRAY_TASK_ID}]} --epochs ${epochs[${SLURM_ARRAY_TASK_ID}]} --eval ${eval[${SLURM_ARRAY_TASK_ID}]} --reverse_steps 100 --noising_process diffusion --dataset gmm_grid --nsamples ${nsamples[${SLURM_ARRAY_TASK_ID}]} --log --alpha 2.0 --loss ml

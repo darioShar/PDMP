@@ -99,8 +99,8 @@ model:
   
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 8
-    hidden_width: 256
+    transforms: 4
+    hidden_width: 128
     hidden_depth: 8
     time_emb_type: learnable
     time_emb_size: 8
