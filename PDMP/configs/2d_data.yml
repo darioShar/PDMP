@@ -10,7 +10,7 @@ data:
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: false #true
   nsamples: 100000
-  bs: 4096 # batch size
+  bs: 250 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.1
   theta: 0.5
@@ -73,7 +73,7 @@ eval:
     #new_time_spacing
   # for diffusion
   diffusion:
-    reverse_steps: 100
+    reverse_steps: 250
     clip_denoised: false
     ddim: false
     eta: 1.0
@@ -89,8 +89,8 @@ model:
     act: silu
     dropout_rate: 0.0
     group_norm: true
-    nblocks: 8
-    nunits: 256
+    nblocks: 4
+    nunits: 64
     skip_connection: true
     beta: 0.2
     threshold: 20
@@ -99,7 +99,7 @@ model:
   
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 3
+    transforms: 8
     hidden_width: 256
     hidden_depth: 8
     time_emb_type: learnable
@@ -113,7 +113,7 @@ model:
   
   # use a simple normalizing flow for generation
   nf:
-    transforms: 3
+    transforms: 8
     hidden_width: 256
     hidden_depth: 8
     model_type: NSF

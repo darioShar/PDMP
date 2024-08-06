@@ -241,10 +241,10 @@ class GenerationManager:
         return anim
 
     def save_animation(self,
-                       anim,
+                       anim = None,
                        generated_data_name = "undefined_distribution",
                        filepath = SAVE_ANIMATION_PATH,
-                        ):
+                        ):    
         path = os.path.join(filepath, generated_data_name + '.mp4')
         anim.save(path)
         print('animation saved in {}'.format(path))

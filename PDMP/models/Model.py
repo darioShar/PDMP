@@ -147,7 +147,7 @@ class MLPModel(nn.Module):
             # split and stack last dimensions to create new channels
             val = torch.split(val, val.shape[-1]//2, dim=-1)
             val = torch.concatenate(val, dim = 1) # add channels
-        val = torch.nn.functional.softplus(val, beta=self.beta, threshold=self.threshold)
+            val = torch.nn.functional.softplus(val, beta=self.beta, threshold=self.threshold)
         # print(val.mean(), val.std())
         return val
     

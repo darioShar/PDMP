@@ -571,16 +571,22 @@ class PDMP:
             # Optionally reshape back to the original shape if needed
             output = ratios.view(B, 2*C, *output.shape[2:])
 
-        index = ((v +1.) / 2.0).bool()
-        selected_output = torch.zeros_like(v)
-        selected_output_inv = torch.zeros_like(v)
-        selected_output = output[:, :C, ...] # select v = 0
-        selected_output[index] = output[:, C:, ...][index] # select v = 1
-        selected_output_inv = output[:, C:, ...] # select v = 1
-        selected_output_inv[index] = output[:, :C, ...][index] # select v = 0
-        
-        # selected_output = torch.gather(output, 1, index)
-        # selected_output_inv = torch.gather(output, 1, 1 - index)
+        # print('output', output[0])
+        index = ((v +1.) / 2.0).long() # .bool()
+        # print('index', index[0])
+        # selected_output = torch.zeros_like(v)
+        # selected_output_inv = torch.zeros_like(v)
+        # selected_output = output[:, :C, ...] # select v = 0
+        # selected_output_inv = output[:, C:, ...] # select v = 1
+        # selected_output[index] = output[:, C:, ...][index] # select v = 1
+        # selected_output_inv[index] = output[:, :C, ...][index] # select v = 0
+        # print('selected_output', selected_output[0])
+        # print('C', C)
+        # print('output[:C]', output[:, :C, ...][0])
+        # print('selected for inv', output[:, :C, ...][index][0])
+        # print('selected_output_inv', selected_output_inv[0])
+        selected_output = torch.gather(output, 1, index)
+        selected_output_inv = torch.gather(output, 1, 1 - index)
 
         return selected_output, selected_output_inv
 
