@@ -13,7 +13,7 @@ from tqdm import tqdm
 class Manager:
     
     def __init__(self, 
-                 models,
+                 model,
                  model_vae,
                  data,
                  noising_process, 
