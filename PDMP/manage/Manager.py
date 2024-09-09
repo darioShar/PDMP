@@ -13,7 +13,7 @@ from tqdm import tqdm
 class Manager:
     
     def __init__(self, 
-                 model,
+                 models,
                  model_vae,
                  data,
                  noising_process, 
@@ -126,8 +126,6 @@ class Manager:
         if self.model_vae is not None:
             self.model_vae.train()
         
-        ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None
-        ema_models_vae=[e['model_vae'] for e in self.ema_objects] if self.ema_objects is not None else None
         print('training model to epoch {} from epoch {}'.format(total_epochs, self.epochs), '...')
         is_image = is_image_dataset(self.p['data']['dataset'])
         freeze_vae = False
@@ -323,10 +321,10 @@ class Manager:
     def training_batches(self):
         return self.total_steps
     
-    # provide key rather than src[key] in case we load an acient run e.g that did not have vae implemented
-    def _safe_load_state_dict(self, dest, src, key):
+    # provide key rather than src[key] in case we load an old run that did not contain any vae key
+    def _safe_load_state_dict(self, dest, src):
         if dest is not None:
-            dest.load_state_dict(src[key])
+            dest.load_state_dict(src)
 
     def _safe_save_state_dict(self, src):
         return src.state_dict() if src is not None else None
@@ -340,6 +338,7 @@ class Manager:
         self._safe_load_state_dict(self.learning_schedule, checkpoint, 'learning_schedule')
         self._safe_load_state_dict(self.learning_schedule_vae, checkpoint, 'learning_schedule_vae')
         if self.ema_objects is not None:
+            # if ema models are in the checkpoint
             if ('ema_models_vae' in checkpoint) and checkpoint['ema_models_vae'] is not None:
                 for ema_obj, ema_state, ema_vae_state in zip(self.ema_objects, checkpoint['ema_models'], checkpoint['ema_models_vae']):
                     ema_obj['model'].load_state_dict(ema_state)

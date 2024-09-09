@@ -9,8 +9,8 @@ data:
   n_mixture: 9 # must be square. set to None if not a grid mixture
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: false #true
-  nsamples: 100000
-  bs: 250 # batch size
+  nsamples: 10000
+  bs: 1000 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.1
   theta: 0.5
@@ -151,9 +151,9 @@ optim:
   lr_gamma: 0.99
 
 run:
-  epochs: 1000
-  eval_freq: null
-  checkpoint_freq: null
+  epochs: 10
+  eval_freq: 2
+  checkpoint_freq: 2
   progress: true # print progress bar
 
 additional:
