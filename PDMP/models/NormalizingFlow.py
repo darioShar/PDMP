@@ -7,9 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 import shutil
 
-import PDMP.pdmp_utils.Algorithms as Algo
-from PDMP.pdmp_utils.Distributions import *
-import PDMP.models.DiffusionBlocks as Block
+
+from bem.datasets.Distributions import *
 import PDMP.models.Embeddings as Embedding
 import zuko
 

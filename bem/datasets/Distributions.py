@@ -3,11 +3,8 @@
 from sklearn.datasets import make_swiss_roll
 from sklearn.mixture import GaussianMixture
 import numpy as np
-from inspect import signature
 import torch
 import scipy
-from torch.utils.data import Dataset
-from torchvision.transforms import ToTensor
 
 # repeat a tensor so that its last dimensions [1:] match size[1:]
 # ideal for working with batches.

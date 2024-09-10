@@ -1,14 +1,15 @@
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-import PDMP.pdmp_utils.Data as Data
-from PDMP.pdmp_utils.Distributions import *
-import enum
+import bem.datasets.Data as Data
+from bem.datasets.Distributions import *
 import torch as th
-from PDMP.LIM.functions.sde import VPSDE
-from PDMP.LIM.functions.sampler import LIM_sampler
-from PDMP.LIM.torchlevy import LevyStable
-import PDMP.LIM.functions.loss as lim_loss
+from PDMP.methods.LIM.functions.sde import VPSDE
+from PDMP.methods.LIM.functions.sampler import LIM_sampler
+from PDMP.methods.LIM.torchlevy import LevyStable
+import PDMP.methods.LIM.functions.loss as lim_loss
+
+
 
 class ModelMeanType():
     """

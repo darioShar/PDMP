@@ -1,15 +1,12 @@
-# file to generate some default data like swiss roll, GMM, levy variables
-
-from sklearn.datasets import make_swiss_roll
-from sklearn.mixture import GaussianMixture
 import numpy as np
 from inspect import signature
 from torch.utils.data import Dataset
-from torchvision.transforms import ToTensor
 
-from PDMP.pdmp_utils.Distributions import *
-from PDMP.pdmp_utils.Algorithms import *
+from bem.datasets.Distributions import *
 from .torchlevy.levy import LevyStable
+
+
+# Sample from useful data distributions like swiss roll, GMM, levy variables
 
 # Wrapper class to call all the generation functions
 # We can specify arbitrary *args and **kwargs. They must match with the selected generation

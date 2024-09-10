@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 from PIL import Image
 
-import PDMP.pdmp_utils.Data as Data
+import bem.datasets.Data as Data
 
 import argparse
 import sys
