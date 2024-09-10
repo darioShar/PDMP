@@ -10,11 +10,11 @@ import yaml
 import os
 import hashlib
 
-from bem.datasets import get_dataset, is_image_dataset
-from bem.TrainingManager import TrainingManager
-import bem.evaluate.EvaluationManager as EvaluationManager
-from bem.GenerationManager import GenerationManager
-from bem.datasets import inverse_affine_transform
+from .datasets import get_dataset, is_image_dataset
+from .TrainingManager import TrainingManager
+from .evaluate.EvaluationManager import EvaluationManager
+from .GenerationManager import GenerationManager
+from .datasets import inverse_affine_transform
 
 ''''''''''' FILE MANIPULATION '''''''''''
 
@@ -357,7 +357,7 @@ class InitUtils:
                                     **kwargs)
 
         # run evaluation on train or test data
-        eval = EvaluationManager.Eval( 
+        eval = EvaluationManager( 
                 method=method,
                 gen_manager=gen_manager,
                 dataloader=data,

@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from bem.utils.exp import ExpUtils
+from .utils_exp import ExpUtils
 
 
 '''
@@ -215,36 +215,3 @@ class Experiment:
 
 
 
-
-
-
-
-
-
-
-
-
-
-'''
-    def set_model(self, new_model):
-        assert False, 'need to reimplement'
-        self.model = new_model
-        optim = utils.init_optimizer_by_parameter(self.model, self.p)
-        learning_schedule = utils.init_ls_by_parameter(optim, self.p)
-        # run it on test data
-        eval = utils.init_eval_by_parameter(self.model, 
-                                                                       self.manager.pdmp, 
-                                                                       self.test_data, 
-                                                                       self.logger, 
-                                                                       self.p)
-        # run it on training data
-        self.manager = utils.init_manager_by_parameter(
-                                            self.model, 
-                                            self.data, 
-                                            self.manager.pdmp, 
-                                            optim,
-                                            learning_schedule,
-                                            eval,
-                                            self.logger, 
-                                            self.p)
-'''

@@ -990,7 +990,7 @@ class LevyDiffusion:
                 losses = losses.mean()
         # assert not nan
         assert not torch.isnan(losses).any(), 'Nan in losses'
-        return losses
+        return {'loss': losses}
         
         
 

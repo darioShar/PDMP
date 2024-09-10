@@ -23,7 +23,8 @@ class PDMP:
                  use_softmax = False, # for ZigZag output
                  learn_jump_time = False,
                  bin_input_zigzag=False,
-                 denoiser=False
+                 denoiser=False,
+                 is_image = False,
                  ):
         self.T = time_horizon
         self.reverse_steps = reverse_steps
@@ -36,6 +37,7 @@ class PDMP:
         self.learn_jump_time = learn_jump_time
         self.bin_input_zigzag = bin_input_zigzag
         self.denoiser = denoiser
+        self.is_image = is_image
 
         #for x in self.add_losses:
         #    possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
@@ -925,13 +927,38 @@ class PDMP:
 
         return loss
     
-    def training_losses(self, models, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], exponent=2.):
+    def training_losses(self, models, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], exponent=2., train_alternate=False):
         model = models['default']
         model_vae = models['vae'] if 'vae' in models else None
+
+        freeze_vae = False
+
+        if type(train_type) == str:
+            train_type = [train_type]
+
+        if self.is_image:
+            # for image datasets, we add noise to the input
+            X_batch += 0.5*torch.rand_like(X_batch) / (256)
+        if 'vae' in models:
+            if not train_alternate:
+                train_type = ['VAE']
+            else:
+                freeze_vae = True
+                model_vae.eval()
+                #if (self.total_steps % 2) == 0:
+                #    train_type = ['NORMAL'] 
+                #else:
+                train_type = ['NORMAL_WITH_VAE'] 
+            if not self.is_image:
+                train_type = ['VAE', 'NORMAL']
+
+        training_results = {}
         if self.learn_jump_time:
-            return self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
+            training_results['loss'] =  self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
         else:
-            return self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
+            training_results['loss'] = self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
+        training_results['freeze_vae'] = freeze_vae
+        return training_results
 
 
     def training_losses_jump_time(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):

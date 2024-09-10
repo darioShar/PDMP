@@ -9,7 +9,7 @@ import PDMP.models.NormalizingFlow as NormalizingFLow
 import PDMP.models.VAE as VAE
 import PDMP.methods.NF as NF
 from bem.utils.exp import InitUtils
-
+from torch.utils.data import DataLoader
 
 
 
@@ -210,7 +210,8 @@ def init_method_by_parameter(p):
                         use_softmax= p['additional']['use_softmax'],
                         learn_jump_time=p['pdmp']['learn_jump_time'],
                         bin_input_zigzag = p['additional']['bin_input_zigzag'],
-                        denoiser = p['pdmp']['denoiser']
+                        denoiser = p['pdmp']['denoiser'],
+                        is_image=is_image_dataset(p['data']['dataset']),
                         )
     elif p['method'] == 'diffusion':
         method = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],

@@ -1,7 +1,5 @@
 import os
 import torch
-import numbers
-import torchvision
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
 from torchvision.datasets import CIFAR10, CelebA, MNIST, ImageNet, ImageFolder
@@ -9,8 +7,6 @@ from torch.utils.data import TensorDataset
 from .lsun import LSUN
 import torch.utils.data
 from torch.utils.data import Subset, Dataset
-from typing import Callable
-import pandas as pd
 import pickle
 import numpy as np
 from PIL import Image

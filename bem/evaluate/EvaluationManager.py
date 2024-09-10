@@ -1,15 +1,13 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import os 
 import copy
-from pathlib import Path
 
 from .fid_score import fid_score, prdc
 import torchvision.utils as tvu
 from .wasserstein import compute_wasserstein_distance
 from .prd_legacy import compute_precision_recall_curve, compute_f_beta
-from .mmd_loss import get_MMD, MMD_loss, MMD
+from .mmd_loss import MMD_loss
 
 def check_dict_eq(dic1, dic2):
     for k, v in dic1.items():
@@ -22,7 +20,7 @@ def check_dict_eq(dic1, dic2):
             if v != dic2[k]:
                 return False
     return True
-class Eval:
+class EvaluationManager:
 
     def __init__(self,
                  method,

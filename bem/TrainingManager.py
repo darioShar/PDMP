@@ -1,10 +1,10 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import bem.utils.ema as ema
 import copy
 import torch.nn as nn
 from tqdm import tqdm
+from .utils_ema import EMAHelper
 #Wrapper around training and evaluation functions
 
 
@@ -39,7 +39,7 @@ class TrainingManager:
             eval.logger = None
             self.ema_objects = []
             for mu in ema_rates:
-                ema_dict = {name: ema.EMAHelper(model, mu = mu) for name, model in self.models.items()}
+                ema_dict = {name: EMAHelper(model, mu = mu) for name, model in self.models.items()}
                 ema_dict['eval'] = copy.deepcopy(eval)
                 self.ema_objects.append(ema_dict)
             # self.ema_objects = [{
@@ -56,25 +56,8 @@ class TrainingManager:
         self.kwargs = kwargs
         self.logger = logger
     
-    # returns True if model exists
-    def exists_model(self, name = 'default'):
-        return name in self.models
-    
-    def exists_optim(self, name = 'default'):
-        return name in self.optimizers
-    
     def exists_ls(self, name = 'default'):
         return (name in self.learning_schedules) and (self.learning_schedules[name] is not None)
-
-    # # returns None if model does not exist
-    # def get_model(self, name = 'default'):
-    #     return self.models[name] if name in self.models else None
-    
-    # def get_optim(self, name = 'default'):
-    #     return self.optimizers[name] if name in self.optimizers else None
-    
-    # def get_ls(self, name = 'default'):
-    #     return self.learning_schedules[name] if name in self.learning_schedules else None
     
     def train(self, total_epoch, **kwargs):
         tmp_kwargs = copy.deepcopy(self.kwargs)
@@ -86,18 +69,13 @@ class TrainingManager:
                 self.logger.log('current_epoch', self.epochs)
         
         def batch_callback(batch_loss):
-                        # batch_loss is nan, reintialize vae
+            # batch_loss is nan, reintialize models
             if np.isnan(batch_loss): 
-                print('reinitializing model_vae, which is likely causing nan in batch loss')
+                print('nan in loss detected, reinitializing models...')
                 models, optimizers, learning_schedules = self.reset_models()
                 self.models = models 
                 self.optimizers = optimizers
                 self.learning_schedules = learning_schedules
-                # self.models['vae'] = m['vae']
-                # self.optimizers['vae'] = o['vae']
-                # self.learning_schedules['vae'] = l['vae']
-            
-                    # raise Exception('loss is nan')
             
             self.eval.register_batch_loss(batch_loss)
             if self.logger is not None:
@@ -107,20 +85,6 @@ class TrainingManager:
                            epoch_callback=epoch_callback, 
                            batch_callback=batch_callback,
                            **tmp_kwargs)
-        #self.train_loop.epoch(
-        #    dataloader = self.data,
-        #    model = self.model,
-        #    model_vae=self.model_vae,
-        #    method = self.method,
-        #    optimizer = self.optimizer,
-        #    optimizer_vae = self.optimizer_vae,
-        #    learning_schedule = self.learning_schedule,
-        #    learning_schedule_vae = self.learning_schedule_vae,
-        #    ema_models=[e['model'] for e in self.ema_objects] if self.ema_objects is not None else None,
-        #    batch_callback = batch_callback,
-        #    epoch_callback = epoch_callback,
-        #    is_image=is_image_dataset(self.p['data']['dataset']),
-        #    **tmp_kwargs)
 
     def _train_epochs(
                 self,
@@ -134,22 +98,12 @@ class TrainingManager:
                 epoch_callback = None,
                 max_batch_per_epoch = None,
                 progress = False,
-                train_type=None,
-                train_alternate=False,
                 **kwargs):
         
         for name, model in self.models.items():
             model.train()
-        # self.model.train()
-        # if self.model_vae is not None:
-        #     self.model_vae.train()
         
         print('training model to epoch {} from epoch {}'.format(total_epochs, self.epochs), '...')
-        is_image = self.eval.is_image # is_image_dataset(self.p['data']['dataset'])
-        freeze_vae = False
-
-        #train_procedure = [['VAE', 'NORMAL']]*10 + [['VAE', 'NORMAL_WITH_VAE']]
-        #['VAE']*5 + ['NORMAL']*2 + ['NORMAL_WITH_VAE']*1 + ['NORMAL']*2
 
         while self.epochs < total_epochs:
             epoch_loss = steps = 0
@@ -158,41 +112,30 @@ class TrainingManager:
                     if i >= max_batch_per_epoch:
                         break
                 
-                if is_image:
-                    # for image datasets, we add noise to the input
-                    Xbatch += 0.5*torch.rand_like(Xbatch) / (256)
-                if self.exists_model('vae') :
-                    if not train_alternate:
-                        train_type = ['VAE']
-                    else:
-                        freeze_vae = True
-                        self.models['vae'].eval()
-                        #if (self.total_steps % 2) == 0:
-                        #    train_type = ['NORMAL'] 
-                        #else:
-                        train_type = ['NORMAL_WITH_VAE'] 
-                    if not is_image:
-                        train_type = ['VAE', 'NORMAL']
-                else:
-                    train_type = None
-                
-                #print('train_type:', train_type)
-                
-                if train_type is not None:
-                    loss = self.method.training_losses(self.models,
-                                                       Xbatch,
-                                                       train_type=train_type,#train_procedure[self.total_steps % len(train_procedure)], 
-                                                       **kwargs)
-                else:
-                    loss = self.method.training_losses(self.models, Xbatch, **kwargs)
-                
+                training_results = self.method.training_losses(self.models, Xbatch, **kwargs)
+                loss = training_results['loss']
 
-                #loss = pdmp.training_losses(model, Xbatch, Vbatch, time_horizons)
-                #loss = loss.mean()
-                #print('loss computed')
                 # and finally gradient descent
+                for name in self.models:
+                    self.optimizers[name].zero_grad()
+                loss.backward()
+                for name in self.models:
+                    if grad_clip is not None:
+                        nn.utils.clip_grad_norm_(self.models[name].parameters(), grad_clip)
+                    self.optimizers[name].step()
+                    if self.exists_ls(name):
+                        self.learning_schedules[name].step()
+                
+                # update ema models
+                if self.ema_objects is not None:
+                    for e in self.ema_objects:
+                        for name in self.models:
+                            e[name].update(self.models[name])
+
+                # for PDMP
+                '''
+                freeze_vae = training_results['freeze_vae']
                 self.optimizers['default'].zero_grad()
-                # self.optimizer.zero_grad()
                 if self.exists_optim('vae') and (not freeze_vae):
                     self.optimizers['vae'].zero_grad()
                 loss.backward()
@@ -206,12 +149,14 @@ class TrainingManager:
                 if self.exists_ls('vae') and (not freeze_vae):
                     self.learning_schedules['vae'].step()
                 
-                # update ema models
+                        
                 if self.ema_objects is not None:
                     for e in self.ema_objects:
                         e['default'].update(self.models['default'])
                         if self.exists_model('vae') and not freeze_vae:
                             e['vae'].update(self.models['vae'])
+                '''
+                
                 epoch_loss += loss.item()
                 steps += 1
                 self.total_steps += 1
@@ -256,19 +201,7 @@ class TrainingManager:
                 with torch.inference_mode():
                     print('evaluating ema model with mu={}'.format(ema_obj['default'].mu))
                     ema_obj['eval'].evaluate_model(models, callback_on_logging = ema_callback_on_logging, **kwargs)
-    
 
-
-    def get_ema_model(self, mu):
-        assert False, 'deprecated'
-        for ema_obj in self.ema_objects:
-            if ema_obj['model'].mu == mu:
-                return ema_obj['model'].get_ema_model()
-                #import copy
-                #new_ema_model = copy.deepcopy(self.model)
-                #ema.ema(new_ema_model)
-                #return new_ema_model
-        raise ValueError('No EMA model with mu = {}'.format(mu))
 
     def display_plots(self, 
                    ema_mu = None, 
@@ -360,25 +293,6 @@ class TrainingManager:
                     print('loading ema model {} with mu={} from checkpoint'.format(name, ema_obj[name].mu))
                     safe_load_state_dict(ema_obj[name], ema_state)
 
-        # self.model.load_state_dict(checkpoint['model_parameters'])
-        # safe_load_state_dict(self.model_vae, checkpoint, 'model_vae_parameters')
-        # self.optimizer.load_state_dict(checkpoint['optimizer'])
-        # safe_load_state_dict(self.optimizer_vae, checkpoint, 'optimizer_vae')
-        # safe_load_state_dict(self.learning_schedule, checkpoint, 'learning_schedule')
-        # safe_load_state_dict(self.learning_schedule_vae, checkpoint, 'learning_schedule_vae')
-        
-        # if self.ema_objects is not None:
-        #     # if ema models are in the checkpoint
-        #     if ('ema_models_vae' in checkpoint) and (checkpoint['ema_models_vae'] is not None):
-        #         for ema_obj, ema_state, ema_vae_state in zip(self.ema_objects, checkpoint['ema_models'], checkpoint['ema_models_vae']):
-        #             ema_obj['model'].load_state_dict(ema_state)
-        #             if ema_obj['model_vae'] is not None:
-        #                 ema_obj['model_vae'].load_state_dict(ema_vae_state)
-        #     else:
-        #         for ema_obj, ema_state, ema_vae_state in zip(self.ema_objects, checkpoint['ema_models'], checkpoint['ema_models_vae']):
-        #             ema_obj['model'].load_state_dict(ema_state)
-        #             if ema_obj['model_vae'] is not None:
-        #                 raise Exception('VAE is in EMA mode, but there are no EMA VAE checkpoint to load')
             
     def save(self, filepath):
         def safe_save_state_dict(src):
@@ -432,26 +346,6 @@ class TrainingManager:
             ema_obj['eval'].evals = saved_ema_evals[idx]
             # log the saved evaluation
             ema_obj['eval'].log_existing_eval_values(folder='eval_ema_{}'.format(ema_obj['default'].mu))
-
-        '''saved_ema_evals = [ema_eval_save for ema_eval_save, mu_save in eval_save['ema_evals']]
-        saved_mus = [mu_save for ema_eval_save, mu_save in eval_save['ema_evals']]
-        for ema_eval, mu in self.ema_evals:
-            if mu not in saved_mus:
-                continue
-            idx = saved_mus.index(mu)
-            ema_eval.evals = saved_ema_evals[idx]
-            ema_eval.log_existing_eval_values(folder='eval_ema_{}'.format(mu)) '''
-        '''for (ema_eval, mu), (ema_eval_save, mu_save) in zip(self.ema_evals, eval_save['ema_evals']):
-            assert mu == mu_save
-            ema_eval.evals = ema_eval_save
-            ema_eval.log_existing_eval_values(folder='eval_ema_{}'.format(mu))'''
-
-    def __getitem__(self, key):
-        import copy
-        return copy.deepcopy(self.eval.evals[key])
-    
-    def __setitem(self, key, value):
-        self.eval.evals[key] = value
     
     # also returns evals
     def display_evals(self,
@@ -473,10 +367,17 @@ class TrainingManager:
             plt.yscale('log')
         plt.show()
 
-
-
-
-
+    # def get_ema_model(self, mu):
+    #     assert False, 'deprecated'
+    #     for ema_obj in self.ema_objects:
+    #         if ema_obj['model'].mu == mu:
+    #             return ema_obj['model'].get_ema_model()
+    #             #import copy
+    #             #new_ema_model = copy.deepcopy(self.model)
+    #             #ema.ema(new_ema_model)
+    #             #return new_ema_model
+    #     raise ValueError('No EMA model with mu = {}'.format(mu))
+    
     #def reset_training(self, new_parameters = None):
     #    self.eval.reset()
     #    self.total_steps = 0
