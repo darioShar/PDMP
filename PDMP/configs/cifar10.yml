@@ -7,7 +7,7 @@ data:
   random_flip: true
   num_workers: 4 # 2* num_GPU
   #num_classes: 2
-  bs: 64 # batch size
+  batch_size: 64 # batch size
 
 noising_process: 'pdmp' # pdmp, diffusion, None
 

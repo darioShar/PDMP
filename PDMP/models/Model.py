@@ -60,7 +60,7 @@ class MLPModel(nn.Module):
                                       nn.Linear(self.time_emb_size, self.time_emb_size), 
                                       self.act)
         
-    def __init__(self, nfeatures, device, p_model_mlp, noising_process, bin_input_zigzag):
+    def __init__(self, nfeatures, device, p_model_mlp, method, bin_input_zigzag):
         super(MLPModel, self).__init__()
 
         # extract from param dict
@@ -75,7 +75,7 @@ class MLPModel(nn.Module):
         self.group_norm =       p_model_mlp['group_norm']
         self.dropout_rate =     p_model_mlp['dropout_rate']
         self.device =           device
-        self.noising_process =  noising_process
+        self.method =  method
         self.bin_input_zigzag=  bin_input_zigzag
 
         # to be computed later depending on chosen architecture
@@ -83,7 +83,7 @@ class MLPModel(nn.Module):
 
         
 
-        assert noising_process in ['diffusion', 'ZigZag'], 'only supports MLP Model for ZigZag and diffusion'
+        assert method in ['diffusion', 'ZigZag'], 'only supports MLP Model for ZigZag and diffusion'
         assert self.time_emb_type in self.possible_time_embeddings
         
         # dropout and group norm.
@@ -112,7 +112,7 @@ class MLPModel(nn.Module):
                                         for _ in range(self.nblocks)])
         
         # 2d outputs, v=1 for the first d ones, v=-1 for the other d ones
-        out_dim = self.nfeatures if (noising_process == 'diffusion') or (self.bin_input_zigzag) else 2*self.nfeatures
+        out_dim = self.nfeatures if (method == 'diffusion') or (self.bin_input_zigzag) else 2*self.nfeatures
         self.outblocks = zero_module(nn.Linear(self.nunits, out_dim))
     
     def forward(self, x, timestep, v = None, bin_input = None):
@@ -143,7 +143,7 @@ class MLPModel(nn.Module):
             val = midblock(val, t, bin_input)
         
         val = self.outblocks(val)
-        if (not self.bin_input_zigzag) and (self.noising_process == 'ZigZag'):
+        if (not self.bin_input_zigzag) and (self.method == 'ZigZag'):
             # split and stack last dimensions to create new channels
             val = torch.split(val, val.shape[-1]//2, dim=-1)
             val = torch.concatenate(val, dim = 1) # add channels

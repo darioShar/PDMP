@@ -10,7 +10,7 @@ data:
   dim: 2 # if data_type is 2d and this is one, will just project on first dimension
   normalized: false #true
   nsamples: 10000
-  bs: 1000 # batch size
+  batch_size: 1000 # batch size
   num_workers: 0 # number of workers for data loading
   std: 0.1
   theta: 0.5
@@ -27,7 +27,7 @@ data:
   - 0.15
   - 0.05
 
-noising_process: 'pdmp' # pdmp, diffusion, None
+method: 'pdmp' # pdmp, diffusion, nf, None
 
 diffusion:
   alpha: 2.0
@@ -121,8 +121,8 @@ model:
 training:
 
   pdmp:
-    ema_rates: null
-    #- 0.9
+    ema_rates: 
+    - 0.95
     grad_clip: null #1.0
     train_type: NORMAL # This is for training conjointly with VAE. assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false

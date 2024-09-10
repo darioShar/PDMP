@@ -6,9 +6,9 @@ data:
   image_size: 32 # resize, must be multiple of 32
   num_workers: 2 # number of workers for data loading
   random_flip: true
-  bs: 256 # batch size
+  batch_size: 256 # batch size
 
-noising_process: 'pdmp' # pdmp, diffusion, None
+method: 'pdmp' # pdmp, diffusion, None
 
 pdmp:
   sampler: HMC # ZigZag, BPS, HMC
@@ -136,9 +136,9 @@ optim:
   lr_gamma: 0.99
 
 run:
-  epochs: 50
+  epochs: 10
   eval_freq: null
-  checkpoint_freq: 25
+  checkpoint_freq: 2
   progress: true # print progress bar
 
 additional:

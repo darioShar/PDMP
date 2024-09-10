@@ -10,7 +10,7 @@ from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor, to_pil_image
 from tqdm import tqdm
 
-from PDMP.datasets import is_image_dataset, affine_transform, inverse_affine_transform
+from bem.datasets import is_image_dataset, affine_transform, inverse_affine_transform
 
 
 ###### ATTENTION ########
