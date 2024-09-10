@@ -2,7 +2,7 @@ import numpy as np
 from inspect import signature
 from torch.utils.data import Dataset
 
-from bem.datasets.Distributions import *
+from .Distributions import *
 from .torchlevy.levy import LevyStable
 
 

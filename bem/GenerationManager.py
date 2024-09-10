@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 import numpy as np
 import os
 import copy
-from bem.datasets import inverse_affine_transform
+from .datasets import inverse_affine_transform
 #from IPython.display import HTML
 
 

@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 from PIL import Image
 
-import bem.datasets.Data as Data
+from .Data import Generator
 
 import argparse
 import sys
@@ -113,18 +113,18 @@ def get_dataset(p):
     config = dict2namespace(p)
 
     assert (config.data.dataset.upper() in [x.upper() for x in image_datasets]) \
-        or (config.data.dataset.upper() in [x.upper() for x in Data.Generator.available_distributions]) \
+        or (config.data.dataset.upper() in [x.upper() for x in Generator.available_distributions]) \
         or (config.data.dataset.lower() in [x.lower() for x in toy_datasets]), \
         "Dataset not available: {}.\nCan choose from:\n(Image)\t{}\n(Toy)\t{}\n(2d data)\t{}".format(config.data.dataset,
                                                                                           image_datasets,
                                                                                           toy_datasets,
-                                                                                          Data.Generator.available_distributions)
+                                                                                          Generator.available_distributions)
     
-    if config.data.dataset.lower() in [x.lower() for x in Data.Generator.available_distributions]:
+    if config.data.dataset.lower() in [x.lower() for x in Generator.available_distributions]:
         # for the moment, only supports dim <= 2
         assert config.data.dim <= 2, 'Only supports at most N-D data with N <= 2 for the moment. Please change Data.generator and Data.Distributions objects.'
 
-        data_gen = Data.Generator(config.data.dataset.lower(), 
+        data_gen = Generator(config.data.dataset.lower(), 
                                     n = int(np.sqrt(config.data.n_mixture)) if config.data.dataset.split('_')[-1] == 'grid' else config.data.n_mixture, 
                                     std = config.data.std, 
                                     normalize = config.data.normalized,

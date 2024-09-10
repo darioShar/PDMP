@@ -8,7 +8,7 @@ import PDMP.models.unet as unet
 import PDMP.models.NormalizingFlow as NormalizingFLow
 import PDMP.models.VAE as VAE
 import PDMP.methods.NF as NF
-from bem.utils.exp import InitUtils
+from bem.utils_exp import InitUtils
 from torch.utils.data import DataLoader
 
 
