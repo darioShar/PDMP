@@ -1,9 +1,8 @@
 .ipynb_checkpoints
 .neptune/**
 
-**__pycache__**
-**/__pycache__
-__pycache__
+**/__pycache__/**
+__pycache__/**
 **.__pycache__**
 
 **pyc**
@@ -26,3 +25,6 @@ scratch/**
 best_mnist_img/**
 img**
 tmp/**
+initial_code/**
+cluster_scripts/**
+animation/**
