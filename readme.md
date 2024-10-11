@@ -4,7 +4,7 @@ PDMP (Piecewise Deterministic Markov Process) is a generative model that replace
 
 This repository contains the full implementation of PDMP, providing the tools for training, evaluation, and generation of data using this model. It includes a modular structure, allowing users to customize different components like the model, logging mechanisms, and experiment setups.
 
-For further details on the theoretical background and methodology, please refer to our preprint [here](https://arxiv.org/abs/2407.18609).
+For further details on the theoretical background and methodology, please refer to our preprint [here](https://arxiv.org/abs/2407.19448).
 
 ## Repository Overview
 
