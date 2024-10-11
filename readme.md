@@ -1,7 +1,3 @@
-Here's the README adapted for your new project *PDMP*, following the same structure and style as the one you provided:
-
----
-
 # PDMP
 
 PDMP (Piecewise Deterministic Markov Process) is a generative model that replaces traditional Gaussian noise-based diffusion with piecewise deterministic processes. This modification aims to enhance sample generation through structured exploration, particularly useful for high-dimensional and complex distributions.
