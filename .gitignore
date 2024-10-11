@@ -21,6 +21,7 @@ cpython
 .neptune/**
 animation/**
 data/**
+data/toy/**
 eval_files/**
 figures/**
 log/**
@@ -33,3 +34,6 @@ tmp/**
 initial_code/**
 cluster_scripts/**
 PDMP/configs/old/**
+cluster_scripts/**
+initial_code/*
+models/*
