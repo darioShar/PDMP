@@ -31,3 +31,4 @@ initial_code/**
 PDMP/configs/old/**
 initial_code/*
 models/*
+**.DS_Store
