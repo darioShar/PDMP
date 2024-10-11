@@ -2,6 +2,7 @@ cluster_scripts/**
 **.ipynb_checkpoints
 .neptune/**
 .ipynb_checkpoints/**
+**.ipynb_checkpoints/**
 **.ipynb
 **/__pycache__/**
 __pycache__/**
