@@ -186,7 +186,6 @@ def update_parameters_before_loading(p, args):
         p['model']['vae'] = True
     return p
 
-
 # change some parameters for the run.
 # These parameters should act on the objects already loaded from the previous runs
 def update_experiment_after_loading(exp, args):
@@ -194,16 +193,19 @@ def update_experiment_after_loading(exp, args):
     schedule_reset = False 
     if args.lr is not None:
         schedule_reset = True
-        for param_group in exp.manager.optimizer.param_groups:
-            param_group['lr'] = args.lr
-        exp.p['optim']['lr'] = args.lr
+        for optim in exp.manager.optimizers.values():
+            for param_group in optim.param_groups:
+                param_group['lr'] = args.lr
+            exp.p['optim']['lr'] = args.lr
     if args.lr_steps is not None:
         schedule_reset = True
         exp.p['optim']['lr_steps'] = args.lr_steps
-    
     if schedule_reset:
-        lr_scheduler = exp.utils.init_utils.init_ls_by_parameter(exp.manager.optimizer)
-        exp.manager.learning_schedule = lr_scheduler
+        for k, ls in exp.manager.learning_schedules.items():
+            ls = exp.utils.init_default_ls(exp.p, exp.manager.optimizers[k])
+            exp.manager.learning_schedules[k] = ls # redundant?
+
+
 
 # some additional logging 
 def additional_logging(exp, args):
@@ -213,16 +215,16 @@ def additional_logging(exp, args):
     
     # logging hash parameter
     if (exp.manager.logger is not None):
-        exp.manager.logger.log('hash_parameter', hash_parameters(exp.p))
+        exp.manager.logger.log('hash_parameter', exp.utils.exp_hash(exp.p))
     
     # logging hash eval
     if (exp.manager.logger is not None):
-        exp.manager.logger.log('hash_eval', hash_parameters_eval(exp.p))
+        exp.manager.logger.log('hash_eval', exp.utils.eval_hash(exp.p))
     
     # starting epoch and batch
     if (exp.manager.logger is not None):
-        exp.manager.logger.log('starting_epoch', exp.manager.training_epochs())
-        exp.manager.logger.log('starting_batch', exp.manager.training_batches())
+        exp.manager.logger.log('starting_epoch', exp.manager.epochs)
+        exp.manager.logger.log('starting_batch', exp.manager.total_steps)
 
 
 # define and parse the arguments
