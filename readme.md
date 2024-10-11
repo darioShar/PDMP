@@ -1,10 +1,10 @@
-# PDMP
+# Generative models with PDMPs
 
-PDMP (Piecewise Deterministic Markov Process) is a generative model that replaces traditional Gaussian noise-based diffusion with piecewise deterministic processes. This modification aims to enhance sample generation through structured exploration, particularly useful for high-dimensional and complex distributions.
+Piecewise Deterministic Generative Models are a class of generative models that replace traditional Gaussian noise-based diffusion with piecewise deterministic processes (PDMPs). 
 
-This repository contains the full implementation of PDMP, providing the tools for training, evaluation, and generation of data using this model. It includes a modular structure, allowing users to customize different components like the model, logging mechanisms, and experiment setups.
+This repository contains the full implementation of these models, providing the tools for training, evaluation, and generation of data. It includes a modular structure, allowing users to customize different components like the model, logging mechanisms, and experiment setups.
 
-For further details on the theoretical background and methodology, please refer to our preprint [here](https://arxiv.org/abs/2407.19448).
+For further details on the theoretical background and methodology, please refer to our paper [here](https://arxiv.org/abs/2407.19448).
 
 ## Repository Overview
 
@@ -14,11 +14,11 @@ We are using [BEM (Better Experimentation Manager)](https://github.com/darioShar
   
 - **Neural Network Architecture**: If you want to change the neural networks used in the PDMP, head to the `PDMP/models` directory. This is where all the neural network models are defined and can be customized according to your needs.
   
-- **Logging Configuration**: To customize how logging is handled, you can inherit from `bem/Logger.py` for integrating your own logger. An example of a custom logging setup is available in `pdmp/NeptuneLogger.py`.
+- **Logging Configuration**: To customize how logging is handled, you can inherit from `bem/Logger.py` for integrating your own logger. An example of a custom logging setup is available in `PDMP/NeptuneLogger.py`.
 
 - **Experiment Workflow**: The `PDMP/pdmp_experiment` file orchestrates the initialization of the training, evaluation, and data generation processes. To integrate your modifications into the experiment flow, update the `init` functions here. These functions will be provided to the `Experiment` class from the `bem` library.
 
-- **Configuration Parameters**: Parameters for specific runs are passed in a dictionary called `p`, which is loaded from configuration files located in `pdmp/configs/`. Adjust these files to fine-tune the behavior of the model and experiment settings.
+- **Configuration Parameters**: Parameters for specific runs are passed in a dictionary called `p`, which is loaded from configuration files located in `PDMP/configs/`. Adjust these files to fine-tune the behavior of the model and experiment settings.
 
 - **Comparison between diffusion and PDMP methods**: This repository supports both traditional diffusion models and PDMP, which allows for structured sampling using piecewise deterministic processes. When using the PDMP method, users can specify different samplers such as 'ZigZag', 'HMC', and 'BPS', and choose from various loss types. Our paper provides a detailed discussion on the advantages of PDMP, though users can experiment with both approaches here.
 
