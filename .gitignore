@@ -1,3 +1,4 @@
+./cluster_scripts/*
 **.ipynb_checkpoints
 .neptune/**
 .ipynb_checkpoints/**
@@ -27,8 +28,6 @@ best_mnist_img/**
 img**
 tmp/**
 initial_code/**
-cluster_scripts/**
 PDMP/configs/old/**
-cluster_scripts/**
 initial_code/*
 models/*
