@@ -4,8 +4,8 @@ import torch
 import numpy as np
 from bem.Logger import Logger
 
-Neptune_Project = "dsh/alpha-stable-diffusion"
-Neptune_API_key = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIzMjljN2QxYS1mNDRkLTRiMjktYjE0Yy0wOTQ0ZmViMzBjNWYifQ=="
+Neptune_Project = "define your own"
+Neptune_API_key = "define your own"
 
 ''' this will manage all the information that could be contained in dictionnary like this:
 p = {

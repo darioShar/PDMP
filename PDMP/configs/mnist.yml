@@ -4,9 +4,7 @@ data:
   channels: 1
   dataset: mnist
   image_size: 32 # resize, must be multiple of 32
-  num_workers: 2 # number of workers for data loading
   random_flip: true
-  batch_size: 256 # batch size
 
 method: 'pdmp' # pdmp, diffusion, None
 
@@ -107,6 +105,8 @@ model:
 
 
 training:
+  num_workers: 2 # number of workers for data loading
+  batch_size: 256 # batch size
   pdmp:
     ema_rates:
     - 0.99

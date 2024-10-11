@@ -1,30 +1,31 @@
 import os
-import yaml
-import dem.manage.Experiments as Exp
-import manage.Logger as Logger
-import dem.manage.exp_utils as exp_utils
-import os
-import yaml
-import matplotlib.pyplot as plt
-
-from dem.utils import *
-
+import bem.Experiments as Exp
+from bem.utils_exp import *
+from script_utils import *
+import PDMP.PDMPExperiment as pdmp_exp
+from PDMP.NeptuneLogger import NeptuneLogger
 
 SAVE_ANIMATION_PATH = './animation'
 
 
-def eval_exp(config_folder):
+def eval_exp(config_path):
     args = parse_args()
-
     # open and get parameters from file
-    p = exp_utils.FileHandler.get_param_from_config(args.config + '.yml', config_folder)
-    
+    p = FileHandler.get_param_from_config(config_path, args.config + '.yml')
+
     update_parameters_before_loading(p, args)
 
     # create experiment object. Specify directory to save and load checkpoints, experiment parameters, and potential logger object
-    exp = Exp.Experiment(os.path.join('models', args.name), 
-                         p, 
-                         logger = Logger.NeptuneLogger() if args.log else None)
+    checkpoint_dir = os.path.join('models', args.name)
+    # the ExpUtils class specifies how to hash the parameter dict, and what and how to initiliaze methods and models
+    exp = Exp.Experiment(checkpoint_dir=checkpoint_dir, 
+                        p=p,
+                        logger = NeptuneLogger() if args.log else None,
+                        exp_hash= pdmp_exp.exp_hash, 
+                        eval_hash=None, # will use default function
+                        init_method_by_parameter= pdmp_exp.init_method_by_parameter,
+                        init_models_by_parameter= pdmp_exp.init_models_by_parameter,
+                        reset_models= pdmp_exp.reset_models)
 
     if args.reset_eval:
         print('Resetting eval dictionnary')
@@ -56,3 +57,6 @@ def eval_exp(config_folder):
     # close everything
     exp.terminate()
 
+if __name__ == '__main__':
+    config_path = 'PDMP/configs/'
+    eval_exp(config_path)

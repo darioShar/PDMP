@@ -33,6 +33,7 @@ class GenerationManager:
                  print_progression=True,
                  **kwargs
                  ):
+        assert nsamples > 0, 'nsamples must be greater than 0, got {}'.format(nsamples)
         tmp_kwargs = copy.deepcopy(self.kwargs)
         tmp_kwargs.update(kwargs)
 
@@ -48,7 +49,7 @@ class GenerationManager:
         # as done in LIM, clamp to -1, 1
         clamp = 1. if self.is_image else 6.
         if get_sample_history:
-            hist = x
+            samples, hist = x
             self.samples = hist[-1, ..., :data.shape[-1]]
             self.history = hist[..., :data.shape[-1]].clamp(-clamp, clamp).cpu()
         else:
@@ -148,19 +149,20 @@ class GenerationManager:
                       title = None,
                       marker = '.',
                       color = 'blue',
-                      xlim = (-1.1, 1.1), 
-                      ylim = (-1.1, 1.1),
+                      xlim = (-1, 1), 
+                      ylim = (-1, 1),
                       alpha = 0.5,
-                      pdmp = None,
+                      method = None,
                       ):
         
-        assert pdmp is not None, 'Must give pdmp object to determine the time spacing'
+        assert method is not None, 'Must give method object to determine the time spacing'
         
         # determine the timesteps we are working with. Add the last value T to the array
         # must reverse the list to have it in increasing order
         # len(self.history) == T+1 (goes from x_T to ... x_0)
-        timesteps = np.array([x for x in pdmp.get_timesteps(len(self.history)-1, **self.kwargs)])
-        timesteps = timesteps[::-1].copy()
+        timesteps = np.array([x for x in method.get_timesteps(len(self.history)-1, **self.kwargs)])
+        T = timesteps[-1]
+        # timesteps = timesteps[::-1].copy()
         timesteps = torch.tensor(timesteps)
 
         num_frames = 60*3
@@ -193,7 +195,7 @@ class GenerationManager:
             return im, 
 
         def get_interpolation_values(i):
-            t = pdmp.T * (i / (num_frames - 1))
+            t = T * (i / (num_frames - 1))
             k = torch.searchsorted(timesteps, t) - 1
             if k < 0:
                 k = 0

@@ -114,7 +114,6 @@ class TrainingManager:
                 
                 training_results = self.method.training_losses(self.models, Xbatch, **kwargs)
                 loss = training_results['loss']
-
                 # and finally gradient descent
                 for name in self.models:
                     self.optimizers[name].zero_grad()
@@ -131,31 +130,6 @@ class TrainingManager:
                     for e in self.ema_objects:
                         for name in self.models:
                             e[name].update(self.models[name])
-
-                # for PDMP
-                '''
-                freeze_vae = training_results['freeze_vae']
-                self.optimizers['default'].zero_grad()
-                if self.exists_optim('vae') and (not freeze_vae):
-                    self.optimizers['vae'].zero_grad()
-                loss.backward()
-                if grad_clip is not None:
-                    nn.utils.clip_grad_norm_(self.models['default'].parameters(), grad_clip)
-                self.optimizers['default'].step()
-                if ('vae' in self.optimizers) and (not freeze_vae):
-                    self.optimizers['vae'].step()
-                if self.exists_ls():
-                    self.learning_schedules['default'].step()
-                if self.exists_ls('vae') and (not freeze_vae):
-                    self.learning_schedules['vae'].step()
-                
-                        
-                if self.ema_objects is not None:
-                    for e in self.ema_objects:
-                        e['default'].update(self.models['default'])
-                        if self.exists_model('vae') and not freeze_vae:
-                            e['vae'].update(self.models['vae'])
-                '''
                 
                 epoch_loss += loss.item()
                 steps += 1
@@ -214,23 +188,18 @@ class TrainingManager:
                    ylim = (-0.5, 1.5),
                    alpha = 0.5):
         # loading the right model
-        model = None
+        models = {}
         if ema_mu is not None:
             if self.ema_objects is not None:
                 for ema_obj in self.ema_objects:
-                    if ema_obj['default'].mu == ema_mu:
-                        model = ema_obj['default'].get_ema_model()
-                        model.eval
-                    if ema_obj['vae'] is not None:
-                        model_vae = ema_obj['vae'].get_ema_model()
-                        model_vae.eval()
-                    else:
-                        model_vae = None
+                    for name, ema in ema_obj.items():
+                        if ema.mu == ema_mu:
+                            models[name] = ema.get_ema_model()
+                            models[name].eval()
         else:
-            model = self.get_model('default')
-            model.eval()
+            models = self.models
         
-        assert model is not None, 'ema_mu={} has not been found'.format(ema_mu)
+        assert len(models) != 0, 'ema_mu={} has not been found'.format(ema_mu)
 
         # number of samples to draw
         nsamples = 1 if self.eval.is_image else nb_datapoints
@@ -262,7 +231,7 @@ class TrainingManager:
                                   xlim=xlim, 
                                   ylim=ylim,
                                   alpha=alpha,
-                                  pdmp = self.method)
+                                  method = self.method)
         plt.show(block=False)
         return anim
     

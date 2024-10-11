@@ -6,13 +6,27 @@ import numpy as np
 import torch
 import scipy
 
-# repeat a tensor so that its last dimensions [1:] match size[1:]
-# ideal for working with batches.
 def match_last_dims(data, size):
-    assert len(data.size()) == 1 # 1-dimensional, one for each batch
-    for i in range(len(size) - 1):
+    """
+    Expands a 1-dimensional tensor so that its last dimensions match the target size.
+    
+    Args:
+        data (torch.Tensor): A 1-dimensional tensor with shape [batch_size].
+        size (tuple or list): The target size, where size[0] should match batch_size.
+    
+    Returns:
+        torch.Tensor: The expanded tensor with shape `size`.
+    """
+    # Ensure data is 1-dimensional
+    assert data.dim() == 1, f"Data must be 1-dimensional, got {data.size()}"
+    
+    # Unsqueeze to add singleton dimensions for expansion
+    for _ in range(len(size) - 1):
         data = data.unsqueeze(-1)
-    return data.repeat(1, *(size[1:]))
+    size = torch.tensor(size)
+    size[0] = data.shape[0]
+    # Use expand instead of repeat to save memory
+    return data.expand(*size)
 
 ''' Generate fat tail distributions'''
 # assumes it is a batch size

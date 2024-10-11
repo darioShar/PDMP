@@ -4,14 +4,12 @@ data:
   between_minus_1_1: true
   quantile_cutoff: 0.99999
   data_alpha: 2.0
-  dataset: gmm_grid #gmm_grid # sas_grid
+  dataset: gmm_grid # sas_grid, rose, olympic_rings etc.
   isotropic: true
   n_mixture: 9 # must be square. set to None if not a grid mixture
-  dim: 2 # if data_type is 2d and this is one, will just project on first dimension
-  normalized: false #true
+  dim: 2 # if data_type is 2d and dim==1, will just project on first dimension
+  normalized: false # normalize data on each axis
   nsamples: 10000
-  batch_size: 1000 # batch size
-  num_workers: 0 # number of workers for data loading
   std: 0.1
   theta: 0.5
   weights:
@@ -119,10 +117,13 @@ model:
     model_type: NSF
 
 training:
-
+  
+  batch_size: 1000 # batch size
+  num_workers: 0 # number of workers for data loading
+  
   pdmp:
     ema_rates: 
-    - 0.95
+    #- 0.95
     grad_clip: null #1.0
     train_type: NORMAL # This is for training conjointly with VAE. assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false

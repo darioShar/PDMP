@@ -321,13 +321,13 @@ class InitUtils:
         
         # implement DDP later on
         data = DataLoader(dataset_files, 
-                        batch_size=p['data']['batch_size'], 
+                        batch_size=p['training']['batch_size'], 
                         shuffle=True, 
-                        num_workers=p['data']['num_workers'])
+                        num_workers=p['training']['num_workers'])
         test_data = DataLoader(test_dataset_files,
-                                batch_size=p['data']['batch_size'],
+                                batch_size=p['training']['batch_size'],
                                 shuffle=True,
-                                num_workers=p['data']['num_workers'])
+                                num_workers=p['training']['num_workers'])
         return data, test_data, dataset_files, test_dataset_files
 
     def init_experiment(self,
@@ -351,7 +351,6 @@ class InitUtils:
         # get generation manager
         kwargs = p['eval'][p['method']]# here kwargs is passed to the underlying Generation Manager.
         gen_manager = GenerationManager(method, 
-                                    #reverse_steps=p['eval'][p['method']]['reverse_steps'], 
                                     dataloader=data, 
                                     is_image = is_image_dataset(p['data']['dataset']),
                                     **kwargs)

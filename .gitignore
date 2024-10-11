@@ -1,5 +1,7 @@
-.ipynb_checkpoints
+**.ipynb_checkpoints
 .neptune/**
+.ipynb_checkpoints/**
+**.ipynb
 
 **/__pycache__/**
 __pycache__/**
@@ -8,13 +10,16 @@ __pycache__/**
 **pyc**
 **/pyc
 pyc
-**.pyc**
+**.pyc
+
 
 **cpython**
 **/cpython
 cpython
 **.cpython**
 
+.neptune/**
+animation/**
 data/**
 eval_files/**
 figures/**
@@ -27,4 +32,4 @@ img**
 tmp/**
 initial_code/**
 cluster_scripts/**
-animation/**
+PDMP/configs/old/**

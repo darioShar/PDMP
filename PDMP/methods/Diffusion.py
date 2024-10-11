@@ -993,7 +993,31 @@ class LevyDiffusion:
         assert not torch.isnan(losses).any(), 'Nan in losses'
         return {'loss': losses}
         
-        
+
+    # for PDMP
+    '''
+    freeze_vae = training_results['freeze_vae']
+    self.optimizers['default'].zero_grad()
+    if self.exists_optim('vae') and (not freeze_vae):
+        self.optimizers['vae'].zero_grad()
+    loss.backward()
+    if grad_clip is not None:
+        nn.utils.clip_grad_norm_(self.models['default'].parameters(), grad_clip)
+    self.optimizers['default'].step()
+    if ('vae' in self.optimizers) and (not freeze_vae):
+        self.optimizers['vae'].step()
+    if self.exists_ls():
+        self.learning_schedules['default'].step()
+    if self.exists_ls('vae') and (not freeze_vae):
+        self.learning_schedules['vae'].step()
+
+            
+    if self.ema_objects is not None:
+        for e in self.ema_objects:
+            e['default'].update(self.models['default'])
+            if self.exists_model('vae') and not freeze_vae:
+                e['vae'].update(self.models['vae'])
+    '''
 
     @staticmethod
     def gen_noise_schedule(steps,
