@@ -1,4 +1,4 @@
-./cluster_scripts/*
+cluster_scripts/**
 **.ipynb_checkpoints
 .neptune/**
 .ipynb_checkpoints/**
