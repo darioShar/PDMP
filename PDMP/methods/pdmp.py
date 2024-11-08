@@ -19,7 +19,6 @@ class PDMP:
                  sampler = 'ZigZag', 
                  refresh_rate = 1.,
                  time_spacing = None,
-                 add_losses = [],
                  use_softmax = False, # for ZigZag output
                  learn_jump_time = False,
                  bin_input_zigzag=False,
@@ -32,17 +31,11 @@ class PDMP:
         self.sampler = sampler
         self.refreshment_rate = refresh_rate
         self.time_spacing = time_spacing
-        self.add_losses = add_losses
         self.use_softmax = use_softmax
         self.learn_jump_time = learn_jump_time
         self.bin_input_zigzag = bin_input_zigzag
         self.denoiser = denoiser
         self.is_image = is_image
-
-        #for x in self.add_losses:
-        #    possible_losses = ['ml', 'hyvarinen', 'square', 'kl', 'logistic', 'hyvarinen_simple', 'kl_simple']
-        #    assert x in possible_losses, 'specified loss {} unavailable. Possible losses to choose from : {}'.format(x, possible_losses)
-
     
     def get_timesteps(self, N, exponent = 2, **kwargs):
         return torch.linspace(1, 0, N+1)**exponent * self.T
@@ -599,7 +592,9 @@ class PDMP:
 
         return selected_output, selected_output_inv
 
-    def training_losses_zigzag(self, model, X_t, V_t, t):
+    def training_losses_zigzag(self, model, X_t, V_t, t, loss_type = None):
+        if loss_type is None:
+            loss_type = ['hyvarinen']
         # send to device
         X_t = X_t.to(self.device)
         V_t = V_t.to(self.device)
@@ -664,24 +659,24 @@ class PDMP:
 
         
         
-        #assert ('hyvarinen' in self.add_losses ) or ('kl' in self.add_losses), 'must use either hyvarinen or kl loss in ZigZag'
+        #assert ('hyvarinen' in loss_type ) or ('kl' in loss_type), 'must use either hyvarinen or kl loss in ZigZag'
         def aux(a):
             if len(a) == 0:
                 return False
-            return (a[0] in self.add_losses) or aux(a[1:])
+            return (a[0] in loss_type) or aux(a[1:])
         zigzag_losses = ['hyvarinen', 'hyvarinen_simple', 'kl', 'kl_simple']
-        assert len(list(set(self.add_losses) & set(zigzag_losses))) != 0, 'Did not specify a loss used in ZigZag. Losses specified: {}. Possible losses for ZigZag: {}'.format(self.add_losses, zigzag_losses)
+        assert len(list(set(loss_type) & set(zigzag_losses))) != 0, 'Did not specify a loss used in ZigZag. Losses specified: {}. Possible losses for ZigZag: {}'.format(loss_type, zigzag_losses)
         
         # adding losses
-        if 'hyvarinen' in self.add_losses:
+        if 'hyvarinen' in loss_type:
             loss += g(selected_output)**2 + g(selected_output_inv)**2
             loss -= 2*g(selected_output)
-        elif 'hyvarinen_simple' in self.add_losses:
+        elif 'hyvarinen_simple' in loss_type:
             loss += g(selected_output_inv)**2 
-        if 'kl' in self.add_losses:
+        if 'kl' in loss_type:
             # KL (17)
             loss += selected_output - torch.log(selected_output_inv)
-        elif 'kl_simple' in self.add_losses:
+        elif 'kl_simple' in loss_type:
             loss += - torch.log(selected_output_inv)
 
         #loss = g(output[:, :, 0])**2 + g(output_inv_0[:, :, 0])**2
@@ -691,7 +686,7 @@ class PDMP:
     
 
     # t is the current time, prev_t is the previous time we must preduct
-    def training_loss_hmc_jump_times(self, model, X_t, V_t, t, prev_t, E_t, train_type, model_vae):
+    def training_loss_hmc_jump_times(self, model, X_t, V_t, t, prev_t, E_t, train_type, model_vae, loss_type = None):
         ''' train_type: 'VAE', 'MLE', 'RATIO'
         'MLE': only use model, which gives the log prob.
         'VAE': only train the vae
@@ -718,13 +713,16 @@ class PDMP:
 
         return loss
 
-    def training_loss_hmc(self, model, X_t, V_t, t, train_type, model_vae=None):
+    def training_loss_hmc(self, model, X_t, V_t, t, train_type, model_vae=None, loss_type=None):
         ''' train_type: 'VAE', 'MLE', 'RATIO'
         'MLE': only use model, which gives the log prob.
         'VAE': only train the vae
         'RATIO': if model_vae is given, trains the ratio with true v_t replaced by vae sample
         'RATIO': if model_vae is not given, trains the ratio with true v_t
         '''
+
+        if loss_type is None:
+            loss_type = ['ml']
 
         # send to device
         X_t = X_t.to(self.device)
@@ -740,17 +738,17 @@ class PDMP:
         if 'RATIO' in train_type:
             assert False, 'We rather model the probability and use ml loss rather than modeling the ratio.'
             # use the output of VAE instead of V_t
-            assert True in [x in ['kl', 'logistic'] for x in self.add_losses]
+            assert True in [x in ['kl', 'logistic'] for x in loss_type]
             loss = 0
             if model_vae is not None:
                 V_t = model_vae.sample(X_t, t)
             output = model(X_t, V_t, t)
             V = torch.randn_like(V_t)
             output_V = model(X_t, V, t)
-            if 'kl' in self.add_losses:
+            if 'kl' in loss_type:
                 ## KL divergence based loss: pretty good
                 loss += output - torch.log(output_V)
-            if 'logistic' in self.add_losses:
+            if 'logistic' in loss_type:
                 ## logistic regression based loss: seems fine
                 loss -= torch.log(1/(1+output))
                 loss -= torch.log(output_V/(1+output_V))
@@ -772,12 +770,12 @@ class PDMP:
 
             # only refreshments in hmc
             possible_losses_hmc = ['ml', 'square', 'kl', 'logistic']
-            assert True in [x in possible_losses_hmc for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_hmc)
-            if 'ml' in self.add_losses:
+            assert True in [x in possible_losses_hmc for x in loss_type], 'need to include at least one loss used in HMC: {}'.format(possible_losses_hmc)
+            if 'ml' in loss_type:
                 # this should be the default loss
                 loss -= output #(X_V_t, t)
             ### alternative losses to choose from
-            if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+            if True in [x in ['square', 'kl', 'logistic'] for x in loss_type]:
                 #### adding some loss for the refreshment ratio
                 log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))
                 V = torch.randn_like(V_t)
@@ -785,15 +783,15 @@ class PDMP:
                 #V_reshape = V.reshape(V.shape[0], -1)
                 output_V = model(X_t, V, t) #(X_V_t, t)
                 #output_V = model(torch.cat([X_t_t, t], dim = -1)).log_prob(V_reshape) #(X_V_t, t)
-            if 'square' in self.add_losses:
+            if 'square' in loss_type:
                 ## square loss: tends not to work well in my experience
                 loss += torch.exp(2*(log_nu_V_t -output)) 
                 loss -= 2 * torch.exp(log_nu_V-output_V)
-            if 'kl' in self.add_losses:
+            if 'kl' in loss_type:
                 ## KL divergence based loss: pretty good
                 loss += torch.exp(log_nu_V_t -output) 
                 loss -= torch.log(torch.exp(log_nu_V-output_V))
-            if 'logistic' in self.add_losses:
+            if 'logistic' in loss_type:
                 ## logistic regression based loss: seems fine
                 loss -= torch.log(1/(1+torch.exp(log_nu_V_t -output)) )
                 loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
@@ -817,7 +815,11 @@ class PDMP:
         #    print('output sample:', output_sample[0])
         #model.train()
 
-    def training_loss_bps(self, model, X_t, V_t, t, train_type=None, model_vae=None):
+    def training_loss_bps(self, model, X_t, V_t, t, train_type=None, model_vae=None, loss_type = None):
+        
+        if loss_type is None:
+            loss_type = ['ml']
+            
         #assert (model_vae is None), 'VAE is not implemented for BPS'
         # send to device
         X_t = X_t.to(self.device)
@@ -844,17 +846,17 @@ class PDMP:
         if 'RATIO' in train_type:
             assert False, 'We rather model the probability and use ml loss rather than modeling the ratio.'
             # use the output of VAE instead of V_t
-            assert True in [x in ['kl', 'logistic'] for x in self.add_losses]
+            assert True in [x in ['kl', 'logistic'] for x in loss_type]
             loss = 0
             if model_vae is not None:
                 V_t = model_vae.sample(X_t, t)
             output = model(X_t, V_t, t)
             V = torch.randn_like(V_t)
             output_V = model(X_t, V, t)
-            if 'kl' in self.add_losses:
+            if 'kl' in loss_type:
                 ## KL divergence based loss: pretty good
                 loss += output - torch.log(output_V)
-            if 'logistic' in self.add_losses:
+            if 'logistic' in loss_type:
                 ## logistic regression based loss: seems fine
                 loss -= torch.log(1/(1+output))
                 loss -= torch.log(output_V/(1+output_V))
@@ -866,12 +868,12 @@ class PDMP:
             model = model.to(self.device)
             output = model(X_t, V_t, t)
             possible_losses_bps = ['ml', 'hyvarinen', 'square', 'kl', 'logistic']
-            assert True in [x in possible_losses_bps for x in self.add_losses], 'need to include at least one loss used in HMC: {}'.format(possible_losses_bps)
-            if 'ml' in self.add_losses:
+            assert True in [x in possible_losses_bps for x in loss_type], 'need to include at least one loss used in HMC: {}'.format(possible_losses_bps)
+            if 'ml' in loss_type:
                 # this should be the default loss
                 loss -= output #(X_V_t, t)
             ### alternative losses to choose from
-            if 'hyvarinen' in self.add_losses:
+            if 'hyvarinen' in loss_type:
                 ## adding the Hyvarinen loss for the reflection ratio
                 temp = V_t * X_t
                 scal_prod = torch.sum(temp,dim=list(range(2, len(X_t.shape)))).reshape(-1, *([1]*len(X_t.shape[1:]))).repeat(1, *X_t.shape[1:])
@@ -883,22 +885,22 @@ class PDMP:
                 def g(x):
                     return 1 / (1+x)
                 loss += g(torch.exp(output-output_reflected))**2
-            if True in [x in ['square', 'kl', 'logistic'] for x in self.add_losses]:
+            if True in [x in ['square', 'kl', 'logistic'] for x in loss_type]:
                 #### adding some loss for the refreshment ratio
                 log_nu_V_t = torch.distributions.Normal(0, 1).log_prob(V_t).sum(dim = list(range(1, len(V_t.shape))))#.unsqueeze(-1)
                 V = torch.randn_like(V_t)
                 log_nu_V   = torch.distributions.Normal(0, 1).log_prob(V).sum(dim = list(range(1, len(V.shape))))#.unsqueeze(-1)
                 output_V = model(X_t, V, t)
                 #output_V = model(torch.cat([X_t, t], dim = -1)).log_prob(V) 
-            if 'square' in self.add_losses:
+            if 'square' in loss_type:
                 ## square loss: tends not to work well in my experience
                 loss += torch.exp(2*(log_nu_V_t - output)) 
                 loss -= 2 * torch.exp(log_nu_V-output_V)
-            if 'kl' in self.add_losses:
+            if 'kl' in loss_type:
                 ## KL divergence based loss: pretty good
                 loss += torch.exp(log_nu_V_t - output) 
                 loss -= torch.log(torch.exp(log_nu_V-output_V))
-            if 'logistic' in self.add_losses:
+            if 'logistic' in loss_type:
                 ## logistic regression based loss: seems fine
                 loss -= torch.log(1/(1+torch.exp(log_nu_V_t - output)) )
                 loss -= torch.log(torch.exp(log_nu_V - output_V)/(1+torch.exp(log_nu_V - output_V)) )
@@ -927,7 +929,7 @@ class PDMP:
 
         return loss
     
-    def training_losses(self, models, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], exponent=2., train_alternate=False):
+    def training_losses(self, models, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], exponent=2., train_alternate=False, loss_type=None):
         model = models['default']
         model_vae = models['vae'] if 'vae' in models else None
 
@@ -954,14 +956,14 @@ class PDMP:
 
         training_results = {}
         if self.learn_jump_time:
-            training_results['loss'] =  self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
+            training_results['loss'] =  self.training_losses_jump_time(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent, loss_type)
         else:
-            training_results['loss'] = self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent)
+            training_results['loss'] = self.training_losses_chain(model, X_batch, time_horizons, V_batch, train_type, model_vae, exponent, loss_type)
         training_results['freeze_vae'] = freeze_vae
         return training_results
 
 
-    def training_losses_jump_time(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):
+    def training_losses_jump_time(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2., loss_type=None):
 
         assert self.sampler == 'HMC', 'training loss jump time only defined for HMC'
         assert model_vae is not None, 'Must use VAE for jump times with HMC'
@@ -995,15 +997,15 @@ class PDMP:
         time_reached = time_horizons - t
         time_prev = time_horizons - prev_t
 
-        losses = self.training_loss_hmc_jump_times(model, X_batch, V_batch, time_reached, time_prev, U, train_type=train_type, model_vae=model_vae)
+        losses = self.training_loss_hmc_jump_times(model, X_batch, V_batch, time_reached, time_prev, U, train_type=train_type, model_vae=model_vae, loss_type = loss_type)
 
-        if 'small_t' in self.add_losses:
+        if 'small_t' in loss_type:
             losses /= (time_horizons.to(self.device))**2
         
         return losses.mean()
 
 
-    def training_losses_chain(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2.):
+    def training_losses_chain(self, model, X_batch, time_horizons = None, V_batch = None, train_type=['NORMAL'], model_vae=None, exponent=2., loss_type=None):
         
         # generate random time horizons
         if time_horizons is None:
@@ -1031,15 +1033,15 @@ class PDMP:
         assert not (t != 0.).any()
 
         if self.sampler == 'ZigZag':
-            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons)
+            losses = self.training_losses_zigzag(model, X_batch, V_batch, time_horizons, loss_type=loss_type)
         elif self.sampler == 'HMC':
             for type in train_type:
                 assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE'], 'Unkown train_type {}'.format(type)
-            losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae)
+            losses = self.training_loss_hmc(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae, loss_type=loss_type)
         elif self.sampler =='BPS':
             for type in train_type:
                 assert type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE'], 'Unkown train_type {}'.format(type)
-            losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae)
+            losses = self.training_loss_bps(model, X_batch, V_batch, time_horizons, train_type=train_type, model_vae=model_vae, loss_type=loss_type)
         
         return losses.mean() #/ torch.prod(torch.tensor(X_batch.shape[1:]))
     

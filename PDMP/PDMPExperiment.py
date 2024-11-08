@@ -206,7 +206,6 @@ def init_method_by_parameter(p):
                         reverse_steps = p['eval']['pdmp']['reverse_steps'],
                         sampler = p['pdmp']['sampler'],
                         refresh_rate = p['pdmp']['refresh_rate'],
-                        add_losses= p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [],
                         use_softmax= p['additional']['use_softmax'],
                         learn_jump_time=p['pdmp']['learn_jump_time'],
                         bin_input_zigzag = p['additional']['bin_input_zigzag'],

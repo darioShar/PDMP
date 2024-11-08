@@ -13,10 +13,6 @@ pdmp:
   sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 5
   refresh_rate: 1.
-  add_losses: 
-  #- hyvarinen
-  # - ml
-  #- logistic
   learn_jump_time: false
 
 # needs a placeholder because of the structure of the program
@@ -117,6 +113,8 @@ training:
     train_type: NORMAL # assert train_type in ['VAE', 'RATIO', 'NORMAL', 'NORMAL_WITH_VAE']
     train_alternate: false
     exponent: 2.0
+    loss_type:
+    - hyvarinen
   diffusion:
     ema_rates: 
     - 0.9999

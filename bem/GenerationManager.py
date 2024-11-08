@@ -49,7 +49,8 @@ class GenerationManager:
         # as done in LIM, clamp to -1, 1
         clamp = 1. if self.is_image else 6.
         if get_sample_history:
-            samples, hist = x
+            # samples, hist = x
+            hist = x
             self.samples = hist[-1, ..., :data.shape[-1]]
             self.history = hist[..., :data.shape[-1]].clamp(-clamp, clamp).cpu()
         else:
@@ -144,52 +145,99 @@ class GenerationManager:
         return fig
 
     def get_animation(self, 
-                      plot_original_data = False,
-                      limit_nb_datapoints = 10000,
-                      title = None,
-                      marker = '.',
-                      color = 'blue',
-                      xlim = (-1, 1), 
-                      ylim = (-1, 1),
-                      alpha = 0.5,
-                      method = None,
-                      ):
-        
+                  plot_original_data=False,
+                  limit_nb_datapoints=10000,
+                  title=None,
+                  marker='.',
+                  color='blue',
+                  xlim=None, 
+                  ylim=None,
+                  alpha=0.5,
+                  method=None,
+                  plot_type='line'  # 'scatter' or 'line'
+                  ):
         assert method is not None, 'Must give method object to determine the time spacing'
         
-        # determine the timesteps we are working with. Add the last value T to the array
-        # must reverse the list to have it in increasing order
-        # len(self.history) == T+1 (goes from x_T to ... x_0)
+        # Determine the timesteps we are working with
         timesteps = np.array([x for x in method.get_timesteps(len(self.history)-1, **self.kwargs)])
+        timesteps = np.sort(timesteps)
         T = timesteps[-1]
-        # timesteps = timesteps[::-1].copy()
         timesteps = torch.tensor(timesteps)
 
-        num_frames = 60*3
+        num_frames = 60 * 6
 
         if plot_original_data:
             original_data = self.load_original_data(limit_nb_datapoints)
             original_data = original_data.squeeze(1)
         
-        fig, ax = plt.subplots()  # Create a figure and axes once.
-        #if title is not None:
-        #    plt.title(title)
+        fig, ax = plt.subplots()
         if self.is_image:
             image_shape = self._img_to_plt_img(self.load_original_data(1)[0]).shape
             im = plt.imshow(np.random.random(image_shape), interpolation='none')
         else:
-            scatter = ax.scatter([], [], alpha=alpha, animated=True, color=color, **self._get_scatter_marker_specific_kwargs(marker))
-            scatter_orig = ax.scatter([], [], alpha=alpha, animated=True, color='orange', **self._get_scatter_marker_specific_kwargs(marker))
+            if plot_type == 'scatter':
+                scatter = ax.scatter([], [], alpha=alpha, animated=True, color=color,
+                                    **self._get_scatter_marker_specific_kwargs(marker))
+                if plot_original_data:
+                    scatter_orig = ax.scatter([], [], alpha=alpha, animated=True, color='orange',
+                                            **self._get_scatter_marker_specific_kwargs(marker))
+            elif plot_type == 'line':
+                num_samples = min(self.history.shape[1], limit_nb_datapoints)
+                lines = []
+                for _ in range(num_samples):
+                    line, = ax.plot([], [], alpha=alpha, animated=True, color=color)
+                    lines.append(line)
+                if plot_original_data:
+                    scatter_orig = ax.scatter([], [], alpha=alpha, color='orange',
+                                            **self._get_scatter_marker_specific_kwargs(marker))
+            else:
+                raise ValueError("Invalid plot_type. Expected 'scatter' or 'line'.")
+            # Compute xlim and ylim if not provided
+            if xlim is None or ylim is None:
+                if plot_type == 'line':
+                    # Reshape history_stacked to (num_timesteps * num_samples, D)
+                    all_data = self.history[:, :num_samples].reshape(-1, self.history.shape[-1])
+                else:
+                    # For scatter plot, use the data from all timesteps
+                    all_history = self.history.cpu()
+                    all_data = all_history.reshape(-1, all_history.shape[-1])[:limit_nb_datapoints]
+                x_data = all_data[:, 0].numpy()
+                y_data = all_data[:, 1].numpy()
+                if plot_original_data:
+                    orig_x = original_data[:limit_nb_datapoints, 0].numpy()
+                    orig_y = original_data[:limit_nb_datapoints, 1].numpy()
+                    x_data = np.concatenate([x_data, orig_x])
+                    y_data = np.concatenate([y_data, orig_y])
+                x_padding = (x_data.max() - x_data.min()) * 0.05  # 5% padding
+                y_padding = (y_data.max() - y_data.min()) * 0.05
+                xlim = (x_data.min() - x_padding, x_data.max() + x_padding)
+                ylim = (y_data.min() - y_padding, y_data.max() + y_padding)
 
         def init_frame_2d():
-            #ax.clear()  # Clear the current axes.
-            ax.set_xlim(xlim)  # Set the limit for x-axis.
-            ax.set_ylim(ylim)  # Set the limit for y-axis.
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+            # ax.set_aspect('equal', adjustable='box')  # Set aspect ratio to be equal
             ax.set_title(title)
-            scatter.set_offsets(np.empty((0, 2)))  # Properly shaped empty array
-            scatter_orig.set_offsets(np.empty((0, 2)))  # Properly shaped empty array
-            return scatter, scatter_orig, 
-        
+            ax.set_xlabel(r'$x_1$')
+            ax.set_ylabel(r'$x_2$')
+            # ax.legend(loc='upper right')
+            ax.grid(True)
+            if plot_type == 'scatter':
+                scatter.set_offsets(np.empty((0, 2)))
+                if plot_original_data:
+                    scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
+                    return [scatter, scatter_orig]
+                else:
+                    return [scatter]
+            elif plot_type == 'line':
+                for line in lines:
+                    line.set_data([], [])
+                if plot_original_data:
+                    scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
+                    return lines + [scatter_orig]
+                else:
+                    return lines
+
         def init_frame_image():
             im.set_data(np.random.random(image_shape))
             return im, 
@@ -197,45 +245,56 @@ class GenerationManager:
         def get_interpolation_values(i):
             t = T * (i / (num_frames - 1))
             k = torch.searchsorted(timesteps, t) - 1
-            if k < 0:
-                k = 0
-            if k >= len(timesteps)-1:
-                k = len(timesteps) - 2
+            k = max(min(k.item(), len(timesteps) - 2), 0)
             l = (t - timesteps[k]) / (timesteps[k+1] - timesteps[k])
             return k, l
-            Xk1 = self.history[k+1].cpu().squeeze(1)[:limit_nb_datapoints]
-            Xk = self.history[k].cpu().squeeze(1)[:limit_nb_datapoints]
-            Xvis = Xk1 * l + Xk* (1 - l)
-            return Xvis
-        
+
         def draw_frame_2d(i):
-            #ax.clear()
             k, l = get_interpolation_values(i)
-            Xk1 = self.history[k+1].cpu().squeeze(1)[:limit_nb_datapoints]
-            Xk = self.history[k].cpu().squeeze(1)[:limit_nb_datapoints]
-            Xvis = Xk1 * l + Xk* (1 - l)
-            scatter.set_offsets(Xvis)
-            if plot_original_data:
-                scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
-                return scatter, scatter_orig, 
-            return scatter, 
-    
+            Xk1 = self.history[k+1].cpu()[:limit_nb_datapoints]
+            Xk = self.history[k].cpu()[:limit_nb_datapoints]
+            Xvis = (Xk1 * l + Xk * (1 - l)).squeeze(1)
+            if plot_type == 'scatter':
+                scatter.set_offsets(Xvis)
+                if plot_original_data:
+                    scatter_orig.set_offsets(original_data[:limit_nb_datapoints])
+                    return scatter, scatter_orig
+                else:
+                    return scatter,
+            elif plot_type == 'line':
+                # Retrieve the trajectory data up to time k for each sample
+                X_history = self.history[:k+1] # Shape: (k+1, num_samples, 1, D)
+                X_history = X_history.cpu().squeeze(2) # Shape: (k+1, num_samples, D)
+                # append Xvis
+                X_history = torch.cat([X_history, Xvis.unsqueeze(0)], dim=0)
+                for idx, line in enumerate(lines):
+                    x_data = X_history[:, idx, 0].numpy()
+                    y_data = X_history[:, idx, 1].numpy()
+                    line.set_data(x_data, y_data)
+                if plot_original_data:
+                    return lines + [scatter_orig]
+                else:
+                    return lines
+
         def draw_frame_image(i):
             k, l = get_interpolation_values(i)
-            Xk1 = self.history[k+1][0].cpu() # just take first element of the batch. batch size should always be one anyway
-            Xk = self.history[k][0].cpu() # just take first element of the batch. batch size should always be one anyway
-            Xvis = Xk1 * l + Xk* (1 - l)
+            Xk1 = self.history[k+1][0].cpu()
+            Xk = self.history[k][0].cpu()
+            Xvis = Xk1 * l + Xk * (1 - l)
             img = self._get_image_from([Xvis], black_and_white=True)
             im.set_data(img)
             return im,
-    
-        # 3000 ms per loop
-        if self.is_image:
-            anim = animation.FuncAnimation(fig, draw_frame_image, frames=num_frames, interval= 3000 / num_frames, blit=True, init_func=init_frame_image)
-        else:
-            anim = animation.FuncAnimation(fig, draw_frame_2d, frames=num_frames, interval= 3000 / num_frames, blit=True, init_func=init_frame_2d)
-        return anim
 
+        if self.is_image:
+            anim = animation.FuncAnimation(fig, draw_frame_image, frames=num_frames,
+                                        interval=6000 / num_frames, blit=True,
+                                        init_func=init_frame_image)
+        else:
+            anim = animation.FuncAnimation(fig, draw_frame_2d, frames=num_frames,
+                                        interval=6000 / num_frames, blit=True,
+                                        init_func=init_frame_2d)
+        return anim
+    
     def save_animation(self,
                        anim = None,
                        generated_data_name = "undefined_distribution",

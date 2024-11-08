@@ -186,7 +186,8 @@ class TrainingManager:
                    plot_original_data=False,
                    xlim = (-0.5, 1.5),
                    ylim = (-0.5, 1.5),
-                   alpha = 0.5):
+                   alpha = 0.5,
+                   forward=False): # animate forward or backward
         # loading the right model
         models = {}
         if ema_mu is not None:
@@ -207,8 +208,31 @@ class TrainingManager:
 
         # generate images
         gm = self.eval.gen_manager
-        with torch.inference_mode():
-            gm.generate(self.models, nsamples, get_sample_history = True, print_progression = True)
+        if forward:
+            # draw batch from dataloader 
+            X_batch, _ = next(iter(self.data))
+            X_batch = X_batch[:nb_datapoints]
+            X_batch = torch.randn_like(X_batch) # Gaussian noise
+            V_batch = self.method.draw_velocity(X_batch)
+            history = []
+            device = self.method.device
+            self.method.device = 'cpu'
+            # put everyhting on the device
+            X_batch = X_batch.to(self.method.device)
+            V_batch = V_batch.to(self.method.device)
+            for _ in range(0, self.method.reverse_steps):
+                t = torch.ones_like(X_batch) * self.method.T / self.method.reverse_steps
+                X_batch, V_batch = self.method.forward(X_batch, t, speed=V_batch)
+                history.append(X_batch.detach().clone())
+            # put back on the device
+            self.method.device = device
+            # make history a torch tensor
+            hist = torch.stack(history)
+            gm.samples = hist[-1]
+            gm.history = hist.clamp(-6, 6)
+        else:
+            with torch.inference_mode():
+                gm.generate(self.models, nsamples, get_sample_history = True, print_progression = True)
         
         # get and display plots
         if self.eval.is_image:

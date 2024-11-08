@@ -1,6 +1,6 @@
 # Generative models with PDMPs
 
-Piecewise Deterministic Generative Models are a class of generative models that replace traditional Gaussian noise-based diffusion with piecewise deterministic processes (PDMPs). 
+Piecewise Deterministic Generative Models are a class of generative models that replace traditional Gaussian noise-based diffusion with piecewise deterministic processes (PDMPs).
 
 This repository contains the full implementation of these models, providing the tools for training, evaluation, and generation of data. It includes a modular structure, allowing users to customize different components like the model, logging mechanisms, and experiment setups.
 

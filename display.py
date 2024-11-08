@@ -40,24 +40,30 @@ def display_exp(config_path):
     
     update_experiment_after_loading(exp, args)
 
+    exp.manager.method.sampler = 'BPS'
+    exp.p['pdmp']['sampler'] = 'BPS' # HMC BPS ZigZag
+
     # some information
-    run_info = [exp.p['data']['dataset'], exp.manager.method.reverse_steps, exp.manager.total_steps]
-    title = '{}, reverse_steps={}, training_steps={}'.format(*run_info[:3])
+    run_info = [exp.p['data']['dataset'], exp.p['method'], exp.manager.method.reverse_steps, exp.manager.total_steps]
+    # title = '{}, reverse_steps={}, training_steps={}'.format(*run_info[:3])
+    title=''
     
     # display plot and animation, for a specific model
+    limits = 2.5
     anim = exp.manager.display_plots(ema_mu=None, # can specify ema rate, if such a model has been trained
                                 plot_original_data=False, 
                                 title=title,
                                 nb_datapoints=20000 if args.generate is None else args.generate, # number of points to display.
-                                marker='.', # '.' marker displays pixel-wide points.
+                                marker='+', # '.' marker displays pixel-wide points.
                                 color='blue', # color of the points
-                                xlim = (-1, 2.5), # x-axis limits
-                                ylim = (-1, 2.5), # y-axis limits
+                                xlim = None, # (- 2.5, 2.5), # x-axis limits
+                                ylim = None, #(- 2.5,  2.5), # y-axis limits
                                 alpha = 1.0,
+                                forward=True, # display forward trajectory or backward
                                 )
     
     # save animation
-    path = os.path.join(SAVE_ANIMATION_PATH, '_'.join([str(x) for x in run_info]))
+    path = os.path.join(SAVE_ANIMATION_PATH, '_'.join([str(x) for x in run_info] + [exp.p['pdmp']['sampler']] if exp.p['method'] == 'pdmp' else []))
     anim.save(path + '.mp4')
     print('Animation saved in {}'.format(path))
 

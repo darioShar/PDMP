@@ -93,10 +93,11 @@ def update_parameters_before_loading(p, args):
     if args.scheme is not None:
         p['eval']['pdmp']['backward_scheme'] = args.scheme
     
-    add_losses = set(p['pdmp']['add_losses'] if p['pdmp']['add_losses'] is not None else [])
-    for l in args.loss:
-        add_losses.add(l)
-    p['pdmp']['add_losses'] = sorted(list(add_losses))
+    add_losses = set(p['training']['pdmp']['loss_type'] if p['training']['pdmp']['loss_type'] is not None else [])
+    if args.loss is not None:
+        for l in args.loss:
+            add_losses.add(l)
+    p['training']['pdmp']['loss_type']= sorted(list(add_losses))
 
     if args.exponent is not None:
         p['eval']['pdmp']['exponent'] = args.exponent
@@ -309,7 +310,7 @@ def parse_args():
     parser.add_argument('--time_horizon', help='choose time horizon for PDMP', default = None, type = int)
     parser.add_argument('--refresh_rate', help='refresh rate for pdmp', default = None, type = float)
     parser.add_argument('--scheme', help='choose scheme', default = None, type = str)
-    parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', required=True, type = str, nargs='+',
+    parser.add_argument('--loss', help='Choose the losses to use (will be added to each other if multiple ones are given)', type = str, nargs='+',
                         choices = ['square', 'kl', 'logistic', 'hyvarinen', 'ml', 'hyvarinen_simple', 'kl_simple', 'small_t'])
     parser.add_argument('--exponent', help='exponent in training and reverse_steps', default = None, type = float)
     parser.add_argument('--denoiser', help='use denoiser in pdmp model', default = None, action='store_true')
