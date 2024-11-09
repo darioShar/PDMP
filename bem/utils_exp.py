@@ -253,7 +253,7 @@ class FileHandler:
     @staticmethod
     # loads all params from a specific folder
     def get_params_from_folder(folder_path):
-        return [torch.load(path) for path in Path(folder_path).glob("parameters*")]
+        return [(path, torch.load(path)) for path in Path(folder_path).glob("parameters*")]
 
 
 
