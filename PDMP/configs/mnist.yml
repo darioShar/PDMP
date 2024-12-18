@@ -101,7 +101,7 @@ model:
 
 
 training:
-  num_workers: 2 # number of workers for data loading
+  num_workers: 0 # number of workers for data loading
   batch_size: 256 # batch size
   pdmp:
     ema_rates:

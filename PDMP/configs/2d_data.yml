@@ -53,9 +53,9 @@ nf:
 
 
 eval:
-  data_to_generate: 10000
+  data_to_generate: 25000
   batch_size: 4096
-  real_data: 10000 # in case of images, number of real images to store and to compare to
+  real_data: 25000 # in case of images, number of real images to store and to compare to
 
   pdmp:
     backward_scheme: splitting # euler
@@ -66,10 +66,10 @@ eval:
     #new_time_spacing
   # for diffusion
   diffusion:
-    reverse_steps: 250
+    reverse_steps: 100
     clip_denoised: false
-    ddim: false
-    eta: 1.0
+    deterministic: false
+    # eta: 1.0
     #new_time_spacing
 
   # needs a placeholder because of the structure of the program
@@ -82,8 +82,8 @@ model:
     act: silu
     dropout_rate: 0.0
     group_norm: true
-    nblocks: 4
-    nunits: 64
+    nblocks: 8 # 6
+    nunits: 256 # 256
     skip_connection: true
     beta: 0.2
     threshold: 20
@@ -92,9 +92,9 @@ model:
   
   # this is for the other samplers; normalizing flows
   normalizing_flow:
-    transforms: 4
-    hidden_width: 128
-    hidden_depth: 8
+    transforms: 8
+    hidden_width: 256
+    hidden_depth: 6
     time_emb_type: learnable
     time_emb_size: 8
     x_emb_size: 8

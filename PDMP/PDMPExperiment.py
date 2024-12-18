@@ -1,7 +1,8 @@
 import zuko
 
 from bem.datasets import get_dataset, is_image_dataset
-import PDMP.methods.Diffusion as Diffusion
+import PDMP.methods.Diffusion_deprecated as Diffusion_deprecated
+import PDMP.methods.GenerativeLevyProcess as GenerativeLevyProcess
 import PDMP.models.Model as Model
 import PDMP.methods.pdmp as PDMP
 import PDMP.models.unet as unet
@@ -213,19 +214,17 @@ def init_method_by_parameter(p):
                         is_image=is_image_dataset(p['data']['dataset']),
                         )
     elif p['method'] == 'diffusion':
-        method = Diffusion.LevyDiffusion(alpha = p['diffusion']['alpha'],
+        method = GenerativeLevyProcess.GenerativeLevyProcess(alpha = p['diffusion']['alpha'],
                                 device = p['device'],
-                                diffusion_steps = p['diffusion']['reverse_steps'],
-                                model_mean_type = p['diffusion']['mean_predict'],
-                                model_var_type = p['diffusion']['var_predict'],
-                                loss_type = p['diffusion']['loss_type'],
+                                reverse_steps = p['diffusion']['reverse_steps'],
+                                # model_mean_type = p['diffusion']['mean_predict'],
+                                # model_var_type = p['diffusion']['var_predict'],
+                                # loss_type = p['diffusion']['loss_type'],
                                 rescale_timesteps = p['diffusion']['rescale_timesteps'],
                                 isotropic = p['diffusion']['isotropic'],
                                 clamp_a=p['diffusion']['clamp_a'],
                                 clamp_eps=p['diffusion']['clamp_eps'],
                                 LIM = p['diffusion']['LIM'],
-                                diffusion_settings=p['diffusion'],
-                                #config = p['LIM_config'] if p['LIM'] else None
         )
     elif p['method'] == 'nf':
         method = NF.NF(reverse_steps = 1,

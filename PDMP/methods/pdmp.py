@@ -37,8 +37,26 @@ class PDMP:
         self.denoiser = denoiser
         self.is_image = is_image
     
-    def get_timesteps(self, N, exponent = 2, **kwargs):
-        return torch.linspace(1, 0, N+1)**exponent * self.T
+    def get_timesteps(self, N, exponent=2, T=None, **kwargs):
+        if T is None:
+            T = self.T
+
+        # Divide N steps into four intervals with the proportions: 1/5, 1/5, 1/5, and 2/5
+        N1 = N // 8
+        N2 = N // 8
+        N3 = N // 4
+        N4 = N - (N1 + N2 + N3)  # Remaining steps to ensure sum equals N
+
+        # Create timesteps for each interval
+        part1 = torch.linspace(1, 0.5, N1 + 1)[:-1]  # Steps from 1 to 1/2, excluding the endpoint
+        part2 = torch.linspace(0.5, 0.25, N2 + 1)[:-1]  # Steps from 1/2 to 1/4
+        part3 = torch.linspace(0.25, 0.125, N3 + 1)[:-1]  # Steps from 1/4 to 1/8
+        part4 = torch.linspace(0.125, 0, N4 + 1)  # Steps from 1/8 to 0, include the endpoint
+
+        # Concatenate all parts and apply exponent scaling
+        timesteps = torch.cat([part1, part2, part3, part4]) ** exponent * T
+        
+        return timesteps
     
     def get_random_timesteps(self, N, exponent = 2, **kwargs):
         return torch.rand(N)**exponent * self.T
@@ -142,7 +160,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = self.get_timesteps(N, exponent=exponent)
+        timesteps = self.get_timesteps(N, exponent=exponent, T=T)
 
         assert (shape is not None) or (x_init is not None) or (v_init is not None) 
         if x_init is None:
@@ -259,7 +277,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = self.get_timesteps(N, exponent=exponent)
+        timesteps = self.get_timesteps(N, exponent=exponent, T=T)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -331,7 +349,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
     
-        timesteps = self.get_timesteps(N, exponent=exponent)
+        timesteps = self.get_timesteps(N, exponent=exponent, T=T)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)
@@ -486,7 +504,7 @@ class PDMP:
         else:
             print_progession = lambda x : x
         print('using Euler')
-        timesteps = self.get_timesteps(N, exponent=exponent)
+        timesteps = self.get_timesteps(N, exponent=exponent, T=T)
         timesteps = timesteps.to(self.device)
         #timesteps = timesteps.flip(dims = (0,))
         #times = T - deltas.cumsum(dim = 0)

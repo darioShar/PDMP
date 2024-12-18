@@ -31,11 +31,13 @@ class GenerationManager:
                  nsamples,
                  get_sample_history = False, # if method supports it, get the history of the samples
                  print_progression=True,
+                 get_full_data = False,
                  **kwargs
                  ):
         assert nsamples > 0, 'nsamples must be greater than 0, got {}'.format(nsamples)
         tmp_kwargs = copy.deepcopy(self.kwargs)
         tmp_kwargs.update(kwargs)
+
 
         _, (data, y) = next(enumerate(self.original_data))
         size = list(data.size())
@@ -45,16 +47,18 @@ class GenerationManager:
                             print_progression = print_progression,
                             get_sample_history = get_sample_history,
                             **tmp_kwargs)
+        
+        dim_0 = x.shape[-1] if get_full_data else data.shape[-1]
         # store samples and possibly history on cpu
         # as done in LIM, clamp to -1, 1
         clamp = 1. if self.is_image else 6.
         if get_sample_history:
             # samples, hist = x
             hist = x
-            self.samples = hist[-1, ..., :data.shape[-1]]
-            self.history = hist[..., :data.shape[-1]].clamp(-clamp, clamp).cpu()
+            self.samples = hist[-1, ..., :dim_0]
+            self.history = hist[..., :dim_0].clamp(-clamp, clamp).cpu()
         else:
-            self.samples = x[..., :data.shape[-1]] # select positions in case of pdmp
+            self.samples = x[..., :dim_0] # select positions in case of pdmp
         self.samples = self.samples.clamp(-clamp, clamp).cpu()
         if self.is_image:
             # print('samples generated:', self.samples.mean(), self.samples.min(),self.samples.max())
@@ -134,7 +138,7 @@ class GenerationManager:
     
     def _get_scatter_marker_specific_kwargs(self, marker):
         if marker == '.':
-            return {'marker': marker, 'lw': 0, 's': 1}
+            return {'marker': marker, 'lw': 0, 's': 10}
         return {'marker': marker}
 
     
@@ -154,7 +158,7 @@ class GenerationManager:
                   ylim=None,
                   alpha=0.5,
                   method=None,
-                  plot_type='line'  # 'scatter' or 'line'
+                  plot_type='scatter'  # 'scatter' or 'line'
                   ):
         assert method is not None, 'Must give method object to determine the time spacing'
         

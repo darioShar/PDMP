@@ -68,7 +68,7 @@ class LevyDiffusion:
         *,
         alpha,
         device,
-        diffusion_steps,
+        reverse_steps,
         model_mean_type,
         model_var_type,
         loss_type,
@@ -82,7 +82,10 @@ class LevyDiffusion:
     ):
         self.alpha = alpha
         self.device = device
-        self.diffusion_steps = diffusion_steps
+        self.diffusion_steps = reverse_steps
+        
+        self.reverse_steps = reverse_steps # to address
+
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
         self.loss_type = loss_type

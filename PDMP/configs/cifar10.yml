@@ -7,13 +7,14 @@ data:
   random_flip: true
   #num_classes: 10
 
-noising_process: 'pdmp' # pdmp, diffusion, None
+method: 'pdmp' # pdmp, diffusion, None
 
 pdmp:
   sampler: HMC # ZigZag, BPS, HMC
   time_horizon: 5
   refresh_rate: 1.
   learn_jump_time: false
+  denoiser: false
 
 # needs a placeholder because of the structure of the program
 nf:
@@ -23,7 +24,7 @@ diffusion:
   alpha: 2.0
   clamp_a: null
   clamp_eps: null
-  reverse_steps: 100 # here our diffusion models are trained with the uniforma distribution over [1, diffusion_steps] instead of [0, 1]: thus it is part of the training parameters
+  reverse_steps: 4000 # here our diffusion models are trained with the uniforma distribution over [1, diffusion_steps] instead of [0, 1]: thus it is part of the training parameters
   LIM: false
   isotropic: true
   rescale_timesteps: true
@@ -39,13 +40,13 @@ eval:
 
   pdmp:
     backward_scheme: splitting # euler
-    reverse_steps: 50 # reverse_steps are only part of evaluation, not of the training
+    reverse_steps: 1000 # reverse_steps are only part of evaluation, not of the training
     exponent: 2 # might need to remove that for hashes to match afterwards.
     #clip_denoised: false
     #new_time_spacing
   # for diffusion
   diffusion:
-    reverse_steps: 100
+    reverse_steps: 1000
     clip_denoised: false
     ddim: false
     eta: 1.0
@@ -104,7 +105,7 @@ model:
 
 
 training:
-  num_workers: 4 # 2* num_GPU
+  num_workers: 0 # 2* num_GPU
   batch_size: 64 # batch size
   pdmp:
     ema_rates:
